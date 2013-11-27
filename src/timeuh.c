@@ -1,4 +1,4 @@
-#include <timeuh.h>
+#include "timeuh.h"
 
 struct timespec time_diff(const time_counter *tc){
     struct timespec tp;
