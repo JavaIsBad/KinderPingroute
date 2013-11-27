@@ -6,11 +6,11 @@ typedef struct {
     struct timespec begin, end;
 } time_counter;
 
-inline int get_begin_time(time_counter *tc, clockid_t clk_id){
+static inline int get_begin_time(time_counter *tc, clockid_t clk_id){
     return clock_gettime(clk_id, &tc->begin);
 }
 
-inline int get_end_time(time_counter *tc, clockid_t clk_id){
+static inline int get_end_time(time_counter *tc, clockid_t clk_id){
     return clock_gettime(clk_id, &tc->end);
 }
 
