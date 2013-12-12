@@ -14,6 +14,6 @@ static inline int get_end_time(time_counter *tc, clockid_t clk_id){
     return clock_gettime(clk_id, &tc->end);
 }
 
-struct timespec time_diff(const time_counter *tc);
+struct timespec time_diff(struct timespec* begin, struct timespec* end);
 
 #endif // __TIMEUH_H
