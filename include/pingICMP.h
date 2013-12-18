@@ -21,7 +21,7 @@ void pingerICMP(void);
 
 void * pingou (void * time);
 
-int checksum(unsigned short* icmp, int totalLength);
+unsigned short checksum(unsigned short* icmp, int totalLength);
 
 void sigIntAction(int signum);
 
