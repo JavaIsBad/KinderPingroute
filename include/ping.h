@@ -25,6 +25,6 @@ int checksum(unsigned short* icmp, int totalLength);
 
 void sigIntAction(int signum);
 
-void lirePacketICMP(unsigned char* buf, int size, struct sockaddr_in* doctorWho);
+void lirePacketICMP(unsigned char* buf, unsigned int size, struct sockaddr_in* doctorWho);
 
 #endif // __PING_H

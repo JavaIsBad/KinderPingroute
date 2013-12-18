@@ -61,7 +61,7 @@ void * pingou (void * time){
 }
 
 void pingerICMP(void){
-	size_t i;
+	unsigned int i;
 	int nbs;
 	unsigned char packet[MAXPACKET];
 	struct icmp *icmpPacket=(struct icmp*) packet;
@@ -74,7 +74,7 @@ void pingerICMP(void){
 	icmpPacket->icmp_seq = nbrSend;
 	icmpPacket->icmp_id = pid;
 	
-	for(i=sizeof(struct timespec); i<sizeData; i++){
+	for(i=(unsigned int) sizeof(struct timespec); i<sizeData; i++){
 		*data++=i;
 	}
 	clock_gettime(CLOCK_REALTIME, time);
@@ -126,19 +126,20 @@ void sigIntAction(int signum){
 	exit(EXIT_SUCCESS);
 }
 
-void lirePacketICMP(unsigned char* buf, int size, struct sockaddr_in* doctorWho){
+void lirePacketICMP(unsigned char* buf, unsigned int size, struct sockaddr_in* doctorWho){
 	struct ip* ip;
 	struct icmp* icmpPacket;
 	struct timespec tnow;
 	struct timespec* tbefore;
 	struct timespec diff;
-	int ipheaderlen;
+	unsigned int ipheaderlen;
 	unsigned int timems;
+	char* trunc;
 	
 	clock_gettime(CLOCK_REALTIME, &tnow);
 	ip=(struct ip*) buf;
 	ipheaderlen=ip->ip_hl<<2; // passage de bits en octets (*32/8)==> *4 ==> <<2 EZ
-	if(size< ipheaderlen + ICMP_MINLEN){
+	if(size < ipheaderlen + ICMP_MINLEN){
 		printf("Vodoo magic happened, the size of the packet must be %d a minima\n", ipheaderlen + ICMP_MINLEN);
 		return;
 	}
@@ -159,7 +160,11 @@ void lirePacketICMP(unsigned char* buf, int size, struct sockaddr_in* doctorWho)
 		timeMax=timems;
 	if(timems<timeMin)
 		timeMin=timems;
-	fprintf(stdout, "%d bytes from %s: icmp_seq=%d, time %dms\n", size, inet_ntoa(doctorWho->sin_addr), icmpPacket->icmp_seq, timems); 
+	if(size<sizeData)
+		trunc="(truncated)";
+	else
+		trunc="";
+	fprintf(stdout, "%u bytes from %s: icmp_seq=%d, time %dms %s\n", size, inet_ntoa(doctorWho->sin_addr), icmpPacket->icmp_seq, timems, trunc); 
 	nbrReceive++;
 }
 
@@ -207,19 +212,19 @@ int main(int argc, char** argv){
 	timetowait.tv_sec=1;
 	timetowait.tv_nsec=0;
 	pinger=pingerICMP;
-	sizeData=1024;
+	sizeData=2048-8;
 	// ******************* JUSQU'ICI ***********************************************
 	pthread_create(&threadPinger, NULL, pingou, &timetowait);
 	inet_ntop(destination.sin_family, &destination.sin_addr, nameDest, INET6_ADDRSTRLEN);
-	printf("Start pinging %s (%s)\n", hostname, nameDest);
+	printf("Start pinging %s (%s) with %u data bytes send\n", hostname, nameDest, sizeData+8);
 	for(;;){
 		socklen_t doctorWhoLength=sizeof(from);
 		int nbrecv;
-		if((nbrecv=recvfrom(sockfd, buffer, MAXPACKET, 0, (struct sockaddr*) &from, &doctorWhoLength))<0){
+		if((nbrecv=recvfrom(sockfd, buffer, MAXPACKET, 0, (struct sockaddr*) &from, &doctorWhoLength))<=0){
 			perror("recvfrom :");
 			continue;
 		}
-		lirePacketICMP(buffer, nbrecv, &from);
+		lirePacketICMP(buffer, (unsigned int) nbrecv, &from);
 	}
 	return EXIT_SUCCESS;
 }
