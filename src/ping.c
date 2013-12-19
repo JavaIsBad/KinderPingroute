@@ -17,8 +17,8 @@
 #include <ifaddrs.h>
 
 
-u_int16_t LocalPort=35454;
-u_int16_t DistantPort=80;
+u_int16_t LocalPort;
+u_int16_t DistantPort;
 char* hostname;
 int pid;
 int sockfd;
@@ -37,6 +37,8 @@ char nameDest[INET6_ADDRSTRLEN];
 void (*pinger)(void);
 
 int main(int argc, char** argv){
+	LocalPort=htons(6789);
+	DistantPort=htons(80);
 	struct sigaction siga;
 	struct timespec timetowait;
 	struct sockaddr_in from;
@@ -109,8 +111,8 @@ int main(int argc, char** argv){
 	pinger=pingerTCP;
 	sizeData=0;
 	// ******************* JUSQU'ICI ***********************************************
-	pthread_create(&threadPinger, NULL, pingou, &timetowait);
 	inet_ntop(destination.sin_family, &destination.sin_addr, nameDest, INET6_ADDRSTRLEN);
+	pthread_create(&threadPinger, NULL, pingou, &timetowait);
 	printf("Start pinging %s (%s) with %u data bytes send\n", hostname, nameDest, sizeData);
 	for(;;){
 		socklen_t doctorWhoLength=sizeof(from);

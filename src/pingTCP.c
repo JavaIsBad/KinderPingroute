@@ -33,14 +33,14 @@ static struct timespec tbefore;
 
 void pingerTCP(void){
 	unsigned char packet[MAXPACKET];
-	struct tcphdr *head=(struct tcphdr*) &packet;
+	struct tcphdr *head=(struct tcphdr*) packet;
 	unsigned int i;
-	unsigned char *data=&packet[20];
+	unsigned char *data=&packet[sizeof(struct tcphdr)];
 	int nbs;
 	memset(head, 0, sizeof(struct tcphdr));
 	head->source=LocalPort;
 	head->dest=DistantPort;
-	head->seq=nbrSend;
+	head->seq=0;
 	head->ack_seq=0;
 	head->doff=5; // 5*32bits (5 bytes)
 	head->syn= 1;
@@ -48,9 +48,9 @@ void pingerTCP(void){
 	
 	for(i=0; i<sizeData; i++)
 		*data++=i;
-	head->check=checksum_tcp((unsigned long) moi.sin_addr.s_addr, (unsigned long) destination.sin_addr.s_addr, packet, 20);
+	head->check=checksum_tcp(moi.sin_addr.s_addr, destination.sin_addr.s_addr, packet, 20);
 	nbs=sendto(sockfd, packet, 20+sizeData, 0, (struct sockaddr*) &destination, sizeof(struct sockaddr));
-	if(nbs<0 || (unsigned int) nbs< 8+sizeData){
+	if(nbs<0 || (unsigned int) nbs< 20+sizeData){
 		if(nbs<0)
 			perror("sendto :");
 		fprintf(stderr, "ping : sendto %s %d chars, achieve %d\n", hostname, 8+sizeData, nbs);

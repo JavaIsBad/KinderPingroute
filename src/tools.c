@@ -134,9 +134,9 @@ void sigIntAction(int signum){
 	exit(EXIT_SUCCESS);
 }
 
-unsigned short checksum_tcp(unsigned long ip_source_tampon, unsigned long ip_destination_tampon, unsigned char buf[MAXPACKET], int totalLength){
+unsigned short checksum_tcp(unsigned long ip_source_tampon, unsigned long ip_destination_tampon, unsigned char *buf, int totalLength){
     struct pseudo_entete pseudo_tcp;
-    char tampon[MAXPACKET+sizeof(struct pseudo_entete)];
+    unsigned char tampon[MAXPACKET+sizeof(struct pseudo_entete)];
     unsigned short check;
 
     // ********************************************************
