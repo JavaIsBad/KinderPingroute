@@ -5,6 +5,7 @@
 #include <netinet/ip.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 //~ int connecticut(int af, int type/*Sock_raw/dgram/stream */, const char* src, connect_info* ci, int port){
 	//~ int protocol;
@@ -54,6 +55,15 @@
 	//~ }
 	//~ return 0;
 //~ }
+
+struct pseudo_entete
+    {
+    unsigned long ip_source; // Adresse ip source
+    unsigned long ip_destination; // Adresse ip destination
+    char mbz; // Champs à 0
+    char type; // Type de protocole
+    unsigned short length; // htons( Taille de l'entete Pseudo + Entete TCP ou UDP + Data )
+ };
 
 extern char* hostname;
 extern int pid;
@@ -122,4 +132,24 @@ void sigIntAction(int signum){
 		printf("round-trip time (ms) min/max/avg =>  %lu/%lu/%lu\n", timeMin, timeMax, timeOverall/nbrReceive);
 	fflush(stdout);
 	exit(EXIT_SUCCESS);
+}
+
+unsigned short checksum_tcp(unsigned long ip_source_tampon, unsigned long ip_destination_tampon, unsigned char buf[MAXPACKET], int totalLength){
+    struct pseudo_entete pseudo_tcp;
+    char tampon[MAXPACKET+sizeof(struct pseudo_entete)];
+    unsigned short check;
+
+    // ********************************************************
+    // Le calcul du Checksum TCP (Idem à UDP)
+    // ********************************************************
+    // Le calcul passe par une pseudo entete TCP + l'entete TCP + les Data
+    pseudo_tcp.ip_source=ip_source_tampon;
+    pseudo_tcp.ip_destination=ip_destination_tampon;
+    pseudo_tcp.mbz=0;
+    pseudo_tcp.type=IPPROTO_TCP;
+    pseudo_tcp.length=htons((unsigned short)(totalLength));
+    memcpy(tampon, &pseudo_tcp, sizeof(pseudo_tcp));
+    memcpy(tampon+sizeof(pseudo_tcp), buf, totalLength);
+    check=checksum((unsigned short*)tampon, sizeof(pseudo_tcp)+totalLength);
+    return(check);
 }
