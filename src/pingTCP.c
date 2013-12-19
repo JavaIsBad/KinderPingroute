@@ -1,15 +1,17 @@
+#include "tools.h"
+#include "const.h"
 #include "pingTCP.h"
 #include "timeuh.h"
 #include <netinet/tcp.h>
 #include <netinet/ip.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <arpa/inet.h>
+#include <string.h>
 
-#define MAXPACKET 4096
 
-u_int16_t LocalPort;
-u_int16_t DistantPort;
+extern u_int16_t LocalPort;
+extern u_int16_t DistantPort;
 extern char* hostname;
 extern int pid;
 extern int sockfd;
@@ -21,8 +23,8 @@ extern long unsigned int nbrSend;
 extern long unsigned int limitePing;
 extern unsigned int sizeData;
 extern struct sockaddr_in destination;
-extern pthread_t threadPinger;
-extern char* nameDest;
+extern unsigned char* buffer;
+extern char nameDest[INET6_ADDRSTRLEN];
 
 static struct timespec tbefore;
 
@@ -85,7 +87,7 @@ void lirePacketTCP(unsigned char* buf, unsigned int size, struct sockaddr_in* do
 		if(!tcphead->syn || !tcphead->ack)
 			printf("message from %s wich is not an syn/ack as expected\n", inet_ntoa(doctorWho->sin_addr));
 		else
-			printf("this is not the message we were expecting : got %d, get %d\n", nbrSend, tcphead->ack_seq);
+			printf("this is not the message we were expecting : got %lu, get %u\n", nbrSend, tcphead->ack_seq);
 		return;
 	}
 	diff=time_diff(&tbefore, &tnow);
@@ -95,6 +97,6 @@ void lirePacketTCP(unsigned char* buf, unsigned int size, struct sockaddr_in* do
 		timeMax=timems;
 	if(timems<timeMin)
 		timeMin=timems;
-	fprintf(stdout, "message received from %s: tcp_seq=%d, time %dms\n", size-8, inet_ntoa(doctorWho->sin_addr), tcphead->ack_seq, timems); 
+	fprintf(stdout, "message received from %s: tcp_seq=%d, time %dms\n", inet_ntoa(doctorWho->sin_addr), tcphead->ack_seq, timems); 
 	nbrReceive++;
 }
