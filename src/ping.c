@@ -114,8 +114,9 @@ int main(int argc, char** argv){
 	inet_ntop(destination.sin_family, &destination.sin_addr, nameDest, INET6_ADDRSTRLEN);
 	pthread_create(&threadPinger, NULL, pingou, &timetowait);
 	printf("Start pinging %s (%s) with %u data bytes send\n", hostname, nameDest, sizeData);
+	socklen_t doctorWhoLength=sizeof(from);
 	for(;;){
-		socklen_t doctorWhoLength=sizeof(from);
+		doctorWhoLength=sizeof(from);
 		int nbrecv;
 		if((nbrecv=recvfrom(sockfd, buffer, MAXPACKET, 0, (struct sockaddr*) &from, &doctorWhoLength))<=0){
 			perror("recvfrom :");

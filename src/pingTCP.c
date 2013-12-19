@@ -32,6 +32,7 @@ static struct timespec tbefore;
 
 
 void pingerTCP(void){
+	printf("%s to %s\n", inet_ntoa(moi.sin_addr), inet_ntoa(destination.sin_addr));
 	unsigned char packet[MAXPACKET];
 	struct tcphdr *head=(struct tcphdr*) packet;
 	unsigned int i;
@@ -40,7 +41,7 @@ void pingerTCP(void){
 	memset(head, 0, sizeof(struct tcphdr));
 	head->source=LocalPort;
 	head->dest=DistantPort;
-	head->seq=0;
+	head->seq=htonl(nbrSend);
 	head->ack_seq=0;
 	head->doff=5; // 5*32bits (5 bytes)
 	head->syn= 1;
@@ -49,7 +50,7 @@ void pingerTCP(void){
 	for(i=0; i<sizeData; i++)
 		*data++=i;
 	head->check=checksum_tcp(moi.sin_addr.s_addr, destination.sin_addr.s_addr, packet, 20);
-	nbs=sendto(sockfd, packet, 20+sizeData, 0, (struct sockaddr*) &destination, sizeof(struct sockaddr));
+	nbs=sendto(sockfd, packet, 20, 0, (struct sockaddr*) &destination, sizeof(struct sockaddr));
 	if(nbs<0 || (unsigned int) nbs< 20+sizeData){
 		if(nbs<0)
 			perror("sendto :");
@@ -86,11 +87,11 @@ void lirePacketTCP(unsigned char* buf, unsigned int size, struct sockaddr_in* do
 	size-=tcpheaderlen;
 	if(tcphead->dest!=LocalPort)
 		return;
-	if(!tcphead->syn && !tcphead->ack && tcphead->ack_seq!=nbrSend){
+	if(!tcphead->syn && !tcphead->ack && ntohl(tcphead->ack_seq)!=nbrSend){
 		if(!tcphead->syn || !tcphead->ack)
 			printf("message from %s wich is not an syn/ack as expected\n", inet_ntoa(doctorWho->sin_addr));
 		else
-			printf("this is not the message we were expecting : got %lu, get %u\n", nbrSend, tcphead->ack_seq);
+			printf("this is not the message we were expecting : got %lu, get %u\n", nbrSend, ntohl(tcphead->ack_seq));
 		return;
 	}
 	diff=time_diff(&tbefore, &tnow);
@@ -100,6 +101,6 @@ void lirePacketTCP(unsigned char* buf, unsigned int size, struct sockaddr_in* do
 		timeMax=timems;
 	if(timems<timeMin)
 		timeMin=timems;
-	fprintf(stdout, "message received from %s: tcp_seq=%d, time %dms\n", inet_ntoa(doctorWho->sin_addr), tcphead->ack_seq, timems); 
+	fprintf(stdout, "message received from %s: tcp_seq=%d, time %dms\n", inet_ntoa(doctorWho->sin_addr), ntohl(tcphead->ack_seq), timems); 
 	nbrReceive++;
 }
