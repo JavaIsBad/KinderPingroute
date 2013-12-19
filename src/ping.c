@@ -14,6 +14,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <ifaddrs.h>
 
 
 u_int16_t LocalPort=35454;
@@ -29,6 +30,7 @@ long unsigned int nbrSend=0;
 long unsigned int limitePing=0;
 unsigned int sizeData;
 struct sockaddr_in destination;
+struct sockaddr_in moi;
 pthread_t threadPinger;
 unsigned char buffer[MAXPACKET];
 char nameDest[INET6_ADDRSTRLEN];
@@ -41,10 +43,37 @@ int main(int argc, char** argv){
 	struct addrinfo wantedAddr;
 	struct addrinfo *to=NULL;
 	struct addrinfo *parseAddr=NULL;
-	
+	struct ifaddrs *myaddrs, *ifa;
+
 	if(argc!=2){
 		printf("Utilisation : %s -option1 -option2 ... adresse/url\n", argv[0]);
 		exit(EXIT_FAILURE);
+	}
+
+    if(getifaddrs(&myaddrs) != 0){ //recuperation de notre adresse ip
+        perror("getifaddrs");
+        exit(1);
+    }
+    for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next){
+        if (ifa->ifa_addr == NULL)
+            continue;
+        if(ifa->ifa_addr->sa_family == AF_INET){
+				if(strcmp("lo", ifa->ifa_name)==0)
+					continue;
+                memcpy(&moi, ifa->ifa_addr, sizeof(struct sockaddr_in)); 
+                break; // on a trouvé une adresse usefull
+         }
+         else
+			continue;
+    }
+    freeifaddrs(myaddrs);
+    char buf[64];
+    memset(buf,0,64);
+    if (!inet_ntop(AF_INET, &moi.sin_addr, buf, sizeof(buf))){
+		printf("%s: inet_ntop failed!\n", ifa->ifa_name);
+	}
+	else{
+		printf("Adresse local : %s\n", buf);
 	}
 	
 	pid=getpid();

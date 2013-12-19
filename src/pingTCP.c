@@ -23,6 +23,7 @@ extern long unsigned int nbrSend;
 extern long unsigned int limitePing;
 extern unsigned int sizeData;
 extern struct sockaddr_in destination;
+extern struct sockaddr_in moi;
 extern unsigned char* buffer;
 extern char nameDest[INET6_ADDRSTRLEN];
 
@@ -47,7 +48,7 @@ void pingerTCP(void){
 	
 	for(i=0; i<sizeData; i++)
 		*data++=i;
-	head->check=checksum((unsigned short*) packet, 20+sizeData);
+	head->check=checksum_tcp((unsigned long) moi.sin_addr.s_addr, (unsigned long) destination.sin_addr.s_addr, packet, 20);
 	nbs=sendto(sockfd, packet, 20+sizeData, 0, (struct sockaddr*) &destination, sizeof(struct sockaddr));
 	if(nbs<0 || (unsigned int) nbs< 8+sizeData){
 		if(nbs<0)
@@ -83,6 +84,8 @@ void lirePacketTCP(unsigned char* buf, unsigned int size, struct sockaddr_in* do
 		return;
 	}
 	size-=tcpheaderlen;
+	if(tcphead->dest!=LocalPort)
+		return;
 	if(!tcphead->syn && !tcphead->ack && tcphead->ack_seq!=nbrSend){
 		if(!tcphead->syn || !tcphead->ack)
 			printf("message from %s wich is not an syn/ack as expected\n", inet_ntoa(doctorWho->sin_addr));

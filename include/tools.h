@@ -1,6 +1,8 @@
 #ifndef __TOOLS_H
 #define __TOOLS_H
 
+#include "const.h"
+
 //~ typedef struct {
 	//~ int sockfd;
 	//~ union{
@@ -20,5 +22,7 @@ void sigIntAction(int signum);
 unsigned short checksum(unsigned short* icmp, int totalLength);
 
 void * pingou (void * time);
+
+unsigned short checksum_tcp(unsigned long ip_source_tampon, unsigned long ip_destination_tampon, unsigned char buf[MAXPACKET], int totalLength);
 
 #endif  // __TOOLS_H
