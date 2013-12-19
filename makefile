@@ -8,8 +8,8 @@ vpath %.h include/
 vpath %.o obj/
 vpath ping bin/
 
-ping : ping.o pingICMP.o timeuh.o tools.o | bin
-	gcc $(CFLAGS) -o ping $(OPATH)ping.o $(OPATH)timeuh.o $(OPATH)pingICMP.o $(OPATH)tools.o $(LIBFLAGS)
+ping : ping.o pingICMP.o pingTCP.o timeuh.o tools.o | bin
+	gcc $(CFLAGS) -o ping $(OPATH)ping.o $(OPATH)timeuh.o $(OPATH)pingICMP.o $(OPATH)tools.o $(OPATH)pingTCP.o $(LIBFLAGS)
 	mv $@ bin/
 
 ping.o : ping.c ping.h

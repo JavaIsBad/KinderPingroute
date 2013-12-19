@@ -16,8 +16,8 @@
 #include <unistd.h>
 
 
-u_int16_t LocalPort;
-u_int16_t DistantPort;
+u_int16_t LocalPort=35454;
+u_int16_t DistantPort=80;
 char* hostname;
 int pid;
 int sockfd;
@@ -39,8 +39,8 @@ int main(int argc, char** argv){
 	struct timespec timetowait;
 	struct sockaddr_in from;
 	struct addrinfo wantedAddr;
-	struct addrinfo *to;
-	struct addrinfo *parseAddr;
+	struct addrinfo *to=NULL;
+	struct addrinfo *parseAddr=NULL;
 	
 	if(argc!=2){
 		printf("Utilisation : %s -option1 -option2 ... adresse/url\n", argv[0]);
@@ -58,7 +58,7 @@ int main(int argc, char** argv){
 	memset(&wantedAddr, 0, sizeof(struct addrinfo));
 	wantedAddr.ai_family=AF_INET;
 	wantedAddr.ai_socktype=SOCK_RAW;
-	wantedAddr.ai_protocol=IPPROTO_ICMP;
+	wantedAddr.ai_protocol=IPPROTO_TCP;
 	getaddrinfo(hostname, NULL, &wantedAddr, &to);
 	
 	for(parseAddr=to; parseAddr!=NULL; parseAddr=parseAddr->ai_next){
@@ -77,8 +77,8 @@ int main(int argc, char** argv){
 	//****************** A CHANGER AVEC LES OPTIONS TOUT CA ***********************
 	timetowait.tv_sec=1;
 	timetowait.tv_nsec=0;
-	pinger=pingerICMP;
-	sizeData=64;
+	pinger=pingerTCP;
+	sizeData=0;
 	// ******************* JUSQU'ICI ***********************************************
 	pthread_create(&threadPinger, NULL, pingou, &timetowait);
 	inet_ntop(destination.sin_family, &destination.sin_addr, nameDest, INET6_ADDRSTRLEN);
@@ -90,7 +90,7 @@ int main(int argc, char** argv){
 			perror("recvfrom :");
 			continue;
 		}
-		lirePacketICMP(buffer, (unsigned int) nbrecv, &from);
+		lirePacketTCP(buffer, (unsigned int) nbrecv, &from);
 	}
 	return EXIT_SUCCESS;
 }

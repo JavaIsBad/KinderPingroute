@@ -29,18 +29,17 @@ extern char nameDest[INET6_ADDRSTRLEN];
 static struct timespec tbefore;
 
 
+
 void pingerTCP(void){
 	unsigned char packet[MAXPACKET];
-	struct tcphdr *head=(struct tcphdr*) packet;
-	static u_int32_t sequence=0;
+	struct tcphdr *head=(struct tcphdr*) &packet;
 	unsigned int i;
 	unsigned char *data=&packet[20];
 	int nbs;
-	
-	memset(&head, 0, sizeof(struct tcphdr));
+	memset(head, 0, sizeof(struct tcphdr));
 	head->source=LocalPort;
 	head->dest=DistantPort;
-	head->seq=sequence++;
+	head->seq=nbrSend;
 	head->ack_seq=0;
 	head->doff=5; // 5*32bits (5 bytes)
 	head->syn= 1;
@@ -56,6 +55,7 @@ void pingerTCP(void){
 		fprintf(stderr, "ping : sendto %s %d chars, achieve %d\n", hostname, 8+sizeData, nbs);
 		fflush(stderr);
 	}
+	clock_gettime(CLOCK_REALTIME, &tbefore);
 	nbrSend++;
 }
 
