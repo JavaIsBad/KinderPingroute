@@ -63,7 +63,7 @@ int main(int argc, char** argv){
 	wantedAddr.ai_family=AF_INET;
 	wantedAddr.ai_socktype=SOCK_RAW;
 	//******** PARSER **********
-	option|=UDP_OPTION;
+	option|=ICMP_OPTION;
 	hostname=argv[1];
 	//******** END PARSER ************
 	if(!(option & ICMP_OPTION & TCP_OPTION & UDP_OPTION)){ // si aucune indication utiliser ICMP
