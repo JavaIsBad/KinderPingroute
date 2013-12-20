@@ -44,8 +44,10 @@ void pingerUDP(void){
 	unsigned char *data=&packet[sizeof(struct udphdr)];
 	int nbs;
 	memset(head, 0, sizeof(struct udphdr));
-	head->source=LocalPort;
+	head->source=htons(LocalPort++);
+	LocalPort=htons(ntohs(LocalPort)+1);
 	head->dest=DistantPort;
+	DistantPort=htons(ntohs(DistantPort)+1);
 	head->len=htons(sizeof(struct udphdr));
 	for(i=0; i<sizeData; i++)
 		*data++=i;
