@@ -1,8 +1,7 @@
-#include "ping.h"
-#include "pingTCP.h"
-#include "pingICMP.h"
-#include "pingUDP.h"
+#include "traceroute.h"
+#include "tracerouteICMP.h"
 #include "tools.h"
+#include "timeuh.h"
 #include "const.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,77 +11,32 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <ifaddrs.h>
 
+u_int32_t adresses[MAXJUMP];
 u_int16_t LocalPort;
 u_int16_t DistantPort;
 char* hostname;
-int pid;
 int sockfd;
 int sockfd_udp_icmp;
-long unsigned int timeMin=ULONG_MAX;
-long unsigned int timeMax=0;
-long unsigned int timeOverall=0;
-long unsigned int nbrReceive=0;
-long unsigned int nbrSend=0;
-long unsigned int limitePing=0;
-unsigned int sizeData;
 struct sockaddr_in destination;
 struct sockaddr_in moi;
-pthread_t threadPinger;
 unsigned char buffer[MAXPACKET];
 char nameDest[INET6_ADDRSTRLEN];
 void (*pinger)(void);
 void (*lirePacket)(unsigned char*, unsigned int, struct sockaddr_in*);
-
-void sigIntAction(int signum){
-	pthread_cancel(threadPinger);
-	pthread_join(threadPinger, NULL);
-	close(sockfd);
-	close(sockfd_udp_icmp);
-	fflush(stdout);
-	printf("Signal %d received\n", signum);
-	printf("************** STATISTICS FOR %s (%s) PINGING **************\n", hostname, nameDest);
-	printf("%ld packets sent, ", nbrSend);
-	printf("%ld packets received, ", nbrReceive);
-	if(nbrSend>0){
-		if(nbrReceive>nbrSend)
-			printf("vodoo magic happened, we received more packets than we sent!\n");
-		else
-			printf("%lu%% packet loss\n", (nbrSend-nbrReceive)*100/nbrSend);
-	}
-	if(nbrReceive>0)
-		printf("round-trip time (ms) min/max/avg =>  %lu/%lu/%lu\n", timeMin, timeMax, timeOverall/nbrReceive);
-	fflush(stdout);
-	exit(EXIT_SUCCESS);
-}
-
-void * pingou (void * time){
-	sigset_t mask;
-	sigfillset(&mask);
-	pthread_sigmask(SIG_BLOCK, &mask, NULL);
-	struct timespec* timer=(struct timespec*) time;
-	for(;;){
-		if(limitePing!=0 && nbrSend>=limitePing){
-			kill(pid, SIGINT);
-			return NULL;
-		}
-		pinger();
-		if(nanosleep(timer, NULL)!=0){
-			perror("nanosleep :");
-			exit(EXIT_FAILURE);
-		}
-	}
-}
+unsigned int sizeData=64;
+struct timespec tbef;
+int ttl=1;
 
 
 int main(int argc, char** argv){
 	LocalPort=htons(6789); // au pif
 	DistantPort=htons(80); // par defaut
-	struct sigaction siga;
 	struct timespec timetowait;
 	struct sockaddr_in from;
 	struct addrinfo wantedAddr;
@@ -97,6 +51,7 @@ int main(int argc, char** argv){
 		exit(EXIT_FAILURE);
 	}
 	
+	memset(&adresses, 0, MAXJUMP*sizeof(*adresses));
 	memset(&wantedAddr, 0, sizeof(struct addrinfo));
 	
 	wantedAddr.ai_family=AF_INET;
@@ -110,34 +65,22 @@ int main(int argc, char** argv){
 	}
 	if(option & ICMP_OPTION){
 		pinger=pingerICMP;
-		lirePacket=lirePacketICMP;	
+		lirePacket=tracertICMP;	
 		wantedAddr.ai_protocol=IPPROTO_ICMP;
 	}
 	if(option & TCP_OPTION){
-		pinger=pingerTCP;
-		lirePacket=lirePacketTCP;
+		pinger=pingerICMP;
+		lirePacket=tracertICMP;
 		wantedAddr.ai_protocol=IPPROTO_TCP;
 	}
 	if(option & UDP_OPTION){
-		pinger=pingerUDP;
-		lirePacket=lirePacketUDP;
+		pinger=pingerICMP;
+		lirePacket=tracertICMP;
 		wantedAddr.ai_protocol=IPPROTO_UDP;
 		DistantPort=htons(4); // unasigned
 	}
-	if((option & TIME_OPTION) && !(option & TCP_OPTION & UDP_OPTION)){ // pas changer pour tcp et udp !
-		timetowait.tv_sec=0; // a changer
-		timetowait.tv_nsec=0; // a changer
-	}
-	else{ // defaut 1 sec
-		timetowait.tv_sec=1; 
-		timetowait.tv_nsec=0;
-	}
-	if(option & SIZE_OPTION){ //uniquement en ICMP
-		sizeData=0; // a changer
-	}
-	else{
-		sizeData=64; //defaut
-	}
+	timetowait.tv_sec=0; 
+	timetowait.tv_nsec=500000000; // pour tester 2 fois par seconde et après 10 essays on passe au suivant -> 5sec
 	if(option & PORT_OPTION & UDP_OPTION){
 		DistantPort=htons(0); // a changer
 	}
@@ -167,13 +110,7 @@ int main(int argc, char** argv){
 	else{
 		printf("Adresse local : %s\n", buf);
 	}
-	
-	pid=getpid();
-	siga.sa_handler=sigIntAction;
-	sigfillset(&siga.sa_mask);
-	siga.sa_flags=0;
-	sigaction(SIGINT, &siga, NULL);
-		
+			
 	if(getaddrinfo(hostname, NULL, &wantedAddr, &to)<0){
 		perror("getaddrinfo");
 		exit(EXIT_FAILURE);
@@ -191,7 +128,7 @@ int main(int argc, char** argv){
 		exit(EXIT_FAILURE);
 	}
 	freeaddrinfo(to);
-	if(option & UDP_OPTION){
+	if(option & UDP_OPTION & TCP_OPTION){
 		wantedAddr.ai_protocol=IPPROTO_ICMP;
 		if(getaddrinfo(hostname, NULL, &wantedAddr, &to)<0){
 			perror("getaddrinfo");
@@ -213,19 +150,63 @@ int main(int argc, char** argv){
 	else
 		socklisten=sockfd;
 	inet_ntop(destination.sin_family, &destination.sin_addr, nameDest, INET6_ADDRSTRLEN);
-	pthread_create(&threadPinger, NULL, pingou, &timetowait);
-	printf("Start pinging %s (%s) with %u data bytes send\n", hostname, nameDest, sizeData);
+	printf("Start tracerouting %s (%s)\n", hostname, nameDest);
 	socklen_t doctorWhoLength=sizeof(from);
-	
-	for(;;){
+	setsockopt(sockfd, IPPROTO_IP, IP_TTL, (char*)&ttl, sizeof(ttl));
+	int maxSocket=sockfd>socklisten ? sockfd+1 : socklisten+1;
+	fd_set ecoute;
+	int nbtry=0;
+	while(ttl<=MAXJUMP){
+		FD_ZERO(&ecoute);
+		FD_SET(socklisten, &ecoute);
 		doctorWhoLength=sizeof(from);
 		int nbrecv;
-		if((nbrecv=recvfrom(socklisten, buffer, MAXPACKET, 0, (struct sockaddr*) &from, &doctorWhoLength))<=0){
-			perror("recvfrom :");
+		clock_gettime(CLOCK_REALTIME, &tbef);
+		pinger();
+		int pres=pselect(maxSocket, &ecoute, NULL, NULL, &timetowait, NULL);
+		if(pres<0){
+			perror("pselect");
+			exit(EXIT_FAILURE);
+		}
+		if(pres==0){//timeout
+			if(nbtry==MAXTRY){
+				afficheEtoile(ttl);
+				ttl++;
+				nbtry=0;
+				setsockopt(sockfd, IPPROTO_IP, IP_TTL, (char*)&ttl, sizeof(ttl));
+				continue;
+			}
+			nbtry++;
 			continue;
 		}
-		lirePacket(buffer, (unsigned int) nbrecv, &from);
+		else{
+			if((nbrecv=recvfrom(socklisten, buffer, MAXPACKET, 0, (struct sockaddr*) &from, &doctorWhoLength))<=0)
+				perror("recvfrom :");
+			if(from.sin_addr.s_addr==destination.sin_addr.s_addr){ // on a atteind la source
+				lirePacket(buffer, (unsigned int) nbrecv, &from);
+				return EXIT_SUCCESS; // fin
+			}
+			if(!appartient(from.sin_addr.s_addr, adresses)){ // on a trouve
+				adresses[ttl-1]=from.sin_addr.s_addr;
+				lirePacket(buffer, (unsigned int) nbrecv, &from);
+				ttl++;
+				nbtry=0;
+				setsockopt(sockfd, IPPROTO_IP, IP_TTL, (char*)&ttl, sizeof(ttl));
+				continue;
+			}
+			else{ // une adresse qu'on a déjà eu
+				if(nbtry==MAXTRY){
+					afficheEtoile(ttl);
+					ttl++;
+					nbtry=0;
+					setsockopt(sockfd, IPPROTO_IP, IP_TTL, (char*)&ttl, sizeof(ttl));
+					continue;
+				}
+				nbtry++;
+			}
+		}
 	}
 	return EXIT_SUCCESS;
 }
+
 

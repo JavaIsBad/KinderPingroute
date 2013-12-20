@@ -1,6 +1,8 @@
 #ifndef __CONST_H
 #define __CONST_H
 
+#define MAXJUMP 30
+#define MAXTRY 2
 #define MAXPACKET 4096
 #define ICMP_OPTION 1
 #define TCP_OPTION 2
