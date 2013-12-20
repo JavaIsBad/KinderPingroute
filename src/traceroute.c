@@ -1,6 +1,7 @@
 #include "traceroute.h"
 #include "tracerouteICMP.h"
 #include "tracerouteUDP.h"
+#include "tracerouteTCP.h"
 #include "tools.h"
 #include "timeuh.h"
 #include "const.h"
@@ -57,7 +58,7 @@ int main(int argc, char** argv){
 	wantedAddr.ai_family=AF_INET;
 	wantedAddr.ai_socktype=SOCK_RAW;
 	//******** PARSER **********
-	option|=UDP_OPTION;
+	option|=TCP_OPTION;
 	hostname=argv[1];
 	//******** END PARSER ************
 	if(!(option & ICMP_OPTION & TCP_OPTION & UDP_OPTION)){ // si aucune indication utiliser ICMP
@@ -69,8 +70,8 @@ int main(int argc, char** argv){
 		wantedAddr.ai_protocol=IPPROTO_ICMP;
 	}
 	if(option & TCP_OPTION){
-		pinger=pingerICMP;
-		lirePacket=tracertICMP;
+		pinger=pingerTCP;
+		lirePacket=tracertTCP;
 		wantedAddr.ai_protocol=IPPROTO_TCP;
 	}
 	if(option & UDP_OPTION){
@@ -159,6 +160,9 @@ int main(int argc, char** argv){
 	while(ttl<=MAXJUMP){
 		FD_ZERO(&ecoute);
 		FD_SET(socklisten, &ecoute);
+		if(option & TCP_OPTION){
+			FD_SET(sockfd, &ecoute);
+		}
 		doctorWhoLength=sizeof(from);
 		int nbrecv;
 		pinger();
@@ -179,6 +183,17 @@ int main(int argc, char** argv){
 			continue;
 		}
 		else{
+			if(option & TCP_OPTION){
+				if(FD_ISSET(sockfd, &ecoute)){ // on a atteint la destination
+					if((nbrecv=recvfrom(sockfd, buffer, MAXPACKET, 0, (struct sockaddr*) &from, &doctorWhoLength))<=0)
+						perror("recvfrom :");
+					if(from.sin_addr.s_addr==destination.sin_addr.s_addr){ // on a atteind la source
+						lirePacket(buffer, (unsigned int) nbrecv, &from);
+						return EXIT_SUCCESS; // fin
+					}
+					continue;
+				}
+			}
 			if((nbrecv=recvfrom(socklisten, buffer, MAXPACKET, 0, (struct sockaddr*) &from, &doctorWhoLength))<=0)
 				perror("recvfrom :");
 			if(from.sin_addr.s_addr==destination.sin_addr.s_addr){ // on a atteind la source

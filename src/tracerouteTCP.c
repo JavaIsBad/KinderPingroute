@@ -1,9 +1,9 @@
-#include "tracerouteUDP.h"
+#include "tracerouteTCP.h"
 #include "const.h"
 #include "tools.h"
 #include "timeuh.h"
 
-#include <netinet/udp.h>
+#include <netinet/tcp.h>
 #include <netinet/ip_icmp.h>
 #include <netinet/ip.h>
 #include <stdio.h>
@@ -11,7 +11,6 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <netdb.h>
-
 extern int sockfd;
 extern struct sockaddr_in destination;
 extern struct sockaddr_in moi;
@@ -21,35 +20,34 @@ extern int ttl;
 
 u_int16_t LocalPort;
 u_int16_t DistantPort;
-static int first=1;
 
-void pingerUDP(void){
+void pingerTCP(void){
 	unsigned char packet[MAXPACKET];
-	struct udphdr *head=(struct udphdr*) packet;
+	struct tcphdr *head=(struct tcphdr*) packet;
 	int nbs;
-	if(first){
-		LocalPort=htons(56789);
-		DistantPort=htons(33465);
-		first=!first;
-	}
-	memset(head, 0, sizeof(struct udphdr));
+	LocalPort=htons(50789);
+	DistantPort=htons(80);
+	memset(head, 0, sizeof(struct tcphdr));
 	head->source=LocalPort;
-	LocalPort=htons(ntohs(LocalPort)+1);
 	head->dest=DistantPort;
-	DistantPort=htons(ntohs(DistantPort)+1);
-	head->len=htons(sizeof(struct udphdr));
-	head->check=checksum_tcp_udp(IPPROTO_UDP ,moi.sin_addr.s_addr, destination.sin_addr.s_addr, packet, sizeof(struct udphdr));
-	nbs=sendto(sockfd, packet, sizeof(struct udphdr), 0, (struct sockaddr*) &destination, sizeof(struct sockaddr));
-	if(nbs<0 || (unsigned int) nbs< sizeof(struct udphdr)){
+	head->seq=0;
+	head->ack_seq=0;
+	head->doff=5; // 5*32bits (5 bytes) sur 1 octet pas besoin de htonl
+	head->syn= 1;
+	head->window= TCP_MAXWIN;
+	
+	head->check=checksum_tcp_udp(IPPROTO_TCP ,moi.sin_addr.s_addr, destination.sin_addr.s_addr, packet, sizeof(struct tcphdr));
+	nbs=sendto(sockfd, packet, sizeof(struct tcphdr), 0, (struct sockaddr*) &destination, sizeof(struct sockaddr));
+	if(nbs<0 || (unsigned int) nbs< sizeof(struct tcphdr)){
 		if(nbs<0)
 			perror("sendto :");
-		fprintf(stderr, "ping : sending %d chars, achieved %d\n", 8, nbs);
+		fprintf(stderr, "ping : sending %lu chars, achieved %d\n", sizeof(struct tcphdr), nbs);
 		fflush(stderr);
 	}
 	clock_gettime(CLOCK_REALTIME, &tbef);
 }
 
-void tracertUDP(unsigned char*buf, unsigned int size, struct sockaddr_in* doctorWho){
+void tracertTCP(unsigned char*buf, unsigned int size, struct sockaddr_in* doctorWho){
 	struct ip* ip;
 	struct timespec tnow;
 	struct timespec diff;

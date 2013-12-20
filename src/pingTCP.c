@@ -37,7 +37,6 @@ extern char nameDest[INET6_ADDRSTRLEN];
 static struct timespec tbefore;
 
 void pingerTCP(void){
-	//inet_ntoa(moi.sin_addr);
 	unsigned char packet[MAXPACKET];
 	struct tcphdr *head=(struct tcphdr*) packet;
 	unsigned int i;
