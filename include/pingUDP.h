@@ -1,7 +1,7 @@
 /**
- * \file pingTCP.h (header file)
+ * \file pingUDP.h (header file)
  * \author SCHMITT Maxime Joël, SCHIMCHOWITSCH PLANTE Raphaël François Guillaume, 
- * \brief header pour le fichier pingTCP.c
+ * \brief header pour le fichier pingUDP.c
  */
 
 #ifndef __PING_UDP_H

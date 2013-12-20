@@ -11,15 +11,25 @@
 #include <sys/types.h>
 #include <string.h>
 #include <ctype.h>
-
+/**
+ * \brief affiche le numero puis 3 étoiles
+ * \param i Un numero à afficher
+ */
 void afficheEtoile(int i);
+
+/**
+ * \brief test si ip appartient au tableau tab
+ * \param ip  L'element a chercher
+ * \param tab  Le tableau dans lequel chercher
+ * \return 0 si n'appartient pas et 1 sinon
+ */
 
 int appartient(u_int32_t ip, u_int32_t *tab);
 
 /**
  * \fn u_int16_t checksum(u_int16_t * icmp, int totalLength)
  * \brief Fonction servant au Checksum ICMP
- * \param icmp, un paquet ICMP
+ * \param icmp un paquet ICMP
  * \param totalLength la taille totale
  * \return le checksum du paquet ICMP
  */
@@ -46,7 +56,7 @@ return 0;
 /**
  * \fn u_int16_t checksum_tcp_udp(char proto, u_int32_t ip_source_tampon, u_int32_t ip_destination_tampon, unsigned char buf[MAXPACKET], int totalLength);
  * \brief Fonction servant au Checksum TCP et UDP
- * \param proto le prototype
+ * \param proto le protocole
  * \param ip_source_tampon le paquet tampon ip
  * \param ip_destination_tampon la destination du paquet ip
  * \param buf le buffer
