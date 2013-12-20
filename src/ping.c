@@ -35,10 +35,12 @@ pthread_t threadPinger;
 unsigned char buffer[MAXPACKET];
 char nameDest[INET6_ADDRSTRLEN];
 void (*pinger)(void);
+void (*lirePacket)(unsigned char*, unsigned int, struct sockaddr_in*);
+
 
 int main(int argc, char** argv){
-	LocalPort=htons(6789);
-	DistantPort=htons(80);
+	LocalPort=htons(6789); // au pif
+	DistantPort=htons(80); // par defaut
 	struct sigaction siga;
 	struct timespec timetowait;
 	struct sockaddr_in from;
@@ -46,12 +48,52 @@ int main(int argc, char** argv){
 	struct addrinfo *to=NULL;
 	struct addrinfo *parseAddr=NULL;
 	struct ifaddrs *myaddrs, *ifa;
+	unsigned int option=0;
 
 	if(argc!=2){
 		printf("Utilisation : %s -option1 -option2 ... adresse/url\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
-
+	
+	memset(&wantedAddr, 0, sizeof(struct addrinfo));
+	
+	wantedAddr.ai_family=AF_INET;
+	wantedAddr.ai_socktype=SOCK_RAW;
+	//******** PARSER **********
+	option|=ICMP_OPTION;
+	hostname=argv[1];
+	//******** END PARSER ************
+	if(!(option & ICMP_OPTION & TCP_OPTION & UDP_OPTION)){ // si aucune indication utiliser ICMP
+		option|=ICMP_OPTION;
+	}
+	if(option & ICMP_OPTION){
+		pinger=pingerICMP;
+		lirePacket=lirePacketICMP;	
+		wantedAddr.ai_protocol=IPPROTO_ICMP;
+	}
+	if(option & TCP_OPTION){
+		pinger=pingerTCP;
+		lirePacket=lirePacketTCP;
+		wantedAddr.ai_protocol=IPPROTO_TCP;
+	}
+	if((option & TIME_OPTION) && !(option & TCP_OPTION & UDP_OPTION)){ // pas changer pour tcp et udp !
+		timetowait.tv_sec=0; // a changer
+		timetowait.tv_nsec=0; // a changer
+	}
+	else{ // defaut 1 sec
+		timetowait.tv_sec=1; 
+		timetowait.tv_nsec=0;
+	}
+	if(option & SIZE_OPTION){ //uniquement en ICMP
+		sizeData=0; // a changer
+	}
+	else{
+		sizeData=64; //defaut
+	}
+	if(option & PORT_OPTION & UDP_OPTION){
+		DistantPort=htons(0); // a changer
+	}
+	
     if(getifaddrs(&myaddrs) != 0){ //recuperation de notre adresse ip
         perror("getifaddrs");
         exit(1);
@@ -83,14 +125,11 @@ int main(int argc, char** argv){
 	sigfillset(&siga.sa_mask);
 	siga.sa_flags=0;
 	sigaction(SIGINT, &siga, NULL);
-	
-	hostname=argv[1];
-	
-	memset(&wantedAddr, 0, sizeof(struct addrinfo));
-	wantedAddr.ai_family=AF_INET;
-	wantedAddr.ai_socktype=SOCK_RAW;
-	wantedAddr.ai_protocol=IPPROTO_TCP;
-	getaddrinfo(hostname, NULL, &wantedAddr, &to);
+		
+	if(getaddrinfo(hostname, NULL, &wantedAddr, &to)<0){
+		perror("getaddrinfo");
+		exit(EXIT_FAILURE);
+	}
 	
 	for(parseAddr=to; parseAddr!=NULL; parseAddr=parseAddr->ai_next){
 		sockfd=socket(parseAddr->ai_family, parseAddr->ai_socktype, parseAddr->ai_protocol);
@@ -104,13 +143,7 @@ int main(int argc, char** argv){
 		exit(EXIT_FAILURE);
 	}
 	freeaddrinfo(to);
-	// faire les actions stdin
-	//****************** A CHANGER AVEC LES OPTIONS TOUT CA ***********************
-	timetowait.tv_sec=1;
-	timetowait.tv_nsec=0;
-	pinger=pingerTCP;
-	sizeData=64;
-	// ******************* JUSQU'ICI ***********************************************
+
 	inet_ntop(destination.sin_family, &destination.sin_addr, nameDest, INET6_ADDRSTRLEN);
 	pthread_create(&threadPinger, NULL, pingou, &timetowait);
 	printf("Start pinging %s (%s) with %u data bytes send\n", hostname, nameDest, sizeData);
@@ -122,7 +155,7 @@ int main(int argc, char** argv){
 			perror("recvfrom :");
 			continue;
 		}
-		lirePacketTCP(buffer, (unsigned int) nbrecv, &from);
+		lirePacket(buffer, (unsigned int) nbrecv, &from);
 	}
 	return EXIT_SUCCESS;
 }

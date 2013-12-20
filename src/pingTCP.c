@@ -85,12 +85,9 @@ void lirePacketTCP(unsigned char* buf, unsigned int size, struct sockaddr_in* do
 	size-=tcpheaderlen;
 	if(tcphead->dest!=LocalPort)
 		return;
-	if(!tcphead->syn && !tcphead->ack && ntohl(tcphead->ack_seq)!=nbrSend){
-		if(!tcphead->syn || !tcphead->ack)
-			printf("message from %s wich is not an syn/ack as expected\n", inet_ntoa(doctorWho->sin_addr));
-		else
-			printf("this is not the message we were expecting : got %lu, get %u\n", nbrSend, ntohl(tcphead->ack_seq));
-		return;
+	if(ntohl(tcphead->ack_seq)!=nbrSend){
+			printf("this is not the message we were expecting : extected %lu, get %u from %s\n", nbrSend, ntohl(tcphead->ack_seq), inet_ntoa(doctorWho->sin_addr));
+			return;
 	}
 	diff=time_diff(&tbefore, &tnow);
 	timems=diff.tv_sec*1000+(diff.tv_nsec/1000000);
