@@ -82,11 +82,11 @@ extern char nameDest[INET6_ADDRSTRLEN];
 extern void (*pinger)(void);
 
 
-void * pingou (void * time){
+void * pingou (void * timee){
 	sigset_t mask;
 	sigfillset(&mask);
 	pthread_sigmask(SIG_BLOCK, &mask, NULL);
-	struct timespec* timer=(struct timespec*) time;
+	struct timespec* timer=(struct timespec*) timee;
 	for(;;){
 		if(limitePing!=0 && nbrSend>=limitePing){
 			kill(pid, SIGINT);
@@ -101,20 +101,20 @@ void * pingou (void * time){
 }
 
 u_int16_t checksum(u_int16_t* icmp, int totalLength){
-	 u_int32_t checksum=0;
+	 u_int32_t checksumm=0;
     // Complément à 1 de la somme des complément à 1 sur 16 bits
     while(totalLength>1){
-		checksum=checksum+*icmp++;
+		checksumm=checksumm+*icmp++;
         totalLength=totalLength-sizeof(u_int16_t);
     }
 
     if(totalLength>0)
-        checksum=checksum+*(unsigned char*)icmp;
+        checksumm=checksumm+*(unsigned char*)icmp;
 
-    checksum=(checksum>>16)+(checksum&0xffff);
-    checksum=checksum+(checksum>>16);
+    checksumm=(checksumm>>16)+(checksumm&0xffff);
+    checksumm=checksumm+(checksumm>>16);
 
-    return (u_int16_t)(~checksum); // complement a 1
+    return (u_int16_t)(~checksumm); // complement a 1
 }
 
 void sigIntAction(int signum){

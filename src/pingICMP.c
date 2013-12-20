@@ -36,7 +36,7 @@ void pingerICMP(void){
 	int nbs;
 	unsigned char packet[MAXPACKET];
 	struct icmp *icmpPacket=(struct icmp*) packet;
-	struct timespec *time=(struct timespec*) &packet[8]; // partie data de icmp
+	struct timespec *timee=(struct timespec*) &packet[8]; // partie data de icmp
 	unsigned char *data=&packet[8+sizeof(struct timespec)];
 	
 	memset(packet, 0, MAXPACKET);
@@ -50,7 +50,7 @@ void pingerICMP(void){
 	for(i=(unsigned int) sizeof(struct timespec); i<sizeData; i++){
 		*data++=i;
 	}
-	clock_gettime(CLOCK_REALTIME, time);
+	clock_gettime(CLOCK_REALTIME, timee);
 	icmpPacket->icmp_cksum=checksum((unsigned short*) icmpPacket, 8+sizeData);
 	nbs=sendto(sockfd, packet, 8+sizeData, 0, (struct sockaddr*) &destination, sizeof(struct sockaddr));
 	
