@@ -1,35 +1,29 @@
-/**
- * \file ping.c (source code file)
- * \author SCHIMCHOWITSCH PLANTE Raphaël François Guillaume, SCHMITT Maxime Joël
- * \brief Code source pour la fonction ping
- */
-
 #include "ping.h"
-#include "timeuh.h"
-#include <time.h>
-#include <errno.h>
-#include <signal.h>
-#include <netinet/ip_icmp.h>
-#include <netinet/ip.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netdb.h>
+#include "pingTCP.h"
+#include "pingICMP.h"
+#include "pingUDP.h"
+#include "tools.h"
+#include "const.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <pthread.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <string.h>
 #include <limits.h>
+#include <signal.h>
+#include <string.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <unistd.h>
+#include <ifaddrs.h>
 
-#define MAXPACKET 4096
 
-void (*pinger)(void);
-
+u_int16_t LocalPort;
+u_int16_t DistantPort;
 char* hostname;
 int pid;
 int sockfd;
+int sockfd_udp_icmp;
 long unsigned int timeMin=ULONG_MAX;
 long unsigned int timeMax=0;
 long unsigned int timeOverall=0;
@@ -38,147 +32,101 @@ long unsigned int nbrSend=0;
 long unsigned int limitePing=0;
 unsigned int sizeData;
 struct sockaddr_in destination;
+struct sockaddr_in moi;
 pthread_t threadPinger;
 unsigned char buffer[MAXPACKET];
 char nameDest[INET6_ADDRSTRLEN];
+void (*pinger)(void);
+void (*lirePacket)(unsigned char*, unsigned int, struct sockaddr_in*);
 
-void * pingou (void * time){
-	sigset_t mask;
-	sigfillset(&mask);
-	pthread_sigmask(SIG_BLOCK, &mask, NULL);
-	struct timespec* timer=(struct timespec*) time;
-	for(;;){
-		if(limitePing!=0 && nbrSend>=limitePing){
-			kill(pid, SIGINT);
-			return NULL;
-		}
-		pinger();
-		if(nanosleep(timer, NULL)!=0){
-			perror("nanosleep :");
-			exit(EXIT_FAILURE);
-		}
-	}
-}
-
-void pingerICMP(void){
-	unsigned int i;
-	int nbs;
-	unsigned char packet[MAXPACKET];
-	struct icmp *icmpPacket=(struct icmp*) packet;
-	struct timespec *time=(struct timespec*) &packet[8]; // partie data de icmp
-	unsigned char *data=&packet[8+sizeof(struct timespec)];
-	
-	icmpPacket->icmp_type = ICMP_ECHO;
-	icmpPacket->icmp_code = 0;
-	icmpPacket->icmp_cksum = 0;
-	icmpPacket->icmp_seq = nbrSend;
-	icmpPacket->icmp_id = pid;
-	
-	for(i=(unsigned int) sizeof(struct timespec); i<sizeData; i++){
-		*data++=i;
-	}
-	clock_gettime(CLOCK_REALTIME, time);
-	icmpPacket->icmp_cksum=checksum((unsigned short*) icmpPacket, 8+sizeData);
-	nbs=sendto(sockfd, packet, 8+sizeData, 0, (struct sockaddr*) &destination, sizeof(struct sockaddr));
-	
-	if(nbs<0 || (unsigned int) nbs< 8+sizeData){
-		if(nbs<0)
-			perror("sendto :");
-		fprintf(stderr, "ping : sendto %s %d chars, achieve %d\n", hostname, 8+sizeData, nbs);
-		fflush(stderr);
-	}
-	nbrSend++;
-}
-
-int checksum(unsigned short* icmp, int totalLength){
-	 unsigned long checksum=0;
-    // Complément à 1 de la somme des complément à 1 sur 16 bits
-    while(totalLength>1){
-		checksum=checksum+*icmp++;
-        totalLength=totalLength-sizeof(unsigned short);
-    }
-
-    if(totalLength>0)
-        checksum=checksum+*(unsigned char*)icmp;
-
-    checksum=(checksum>>16)+(checksum&0xffff);
-    checksum=checksum+(checksum>>16);
-
-    return (unsigned short)(~checksum); // complement a 1
-}
-
-void sigIntAction(int signum){
-	pthread_cancel(threadPinger);
-	fflush(stdout);
-	printf("Signal %d received\n", signum);
-	printf("************** STATISTICS FOR %s PINGING **************\n", hostname);
-	printf("%ld packets sent, ", nbrSend);
-	printf("%ld packets received, ", nbrReceive);
-	if(nbrSend>0){
-		if(nbrReceive>nbrSend)
-			printf("vodoo magic happened, we received more packets than we sent!\n");
-		else
-			printf("%lu%% packet loss\n", (nbrSend-nbrReceive)*100/nbrSend);
-	}
-	if(nbrReceive>0)
-		printf("round-trip time (ms) min/max/avg =>  %lu/%lu/%lu\n", timeMin, timeMax, timeOverall/nbrReceive);
-	fflush(stdout);
-	exit(EXIT_SUCCESS);
-}
-
-void lirePacketICMP(unsigned char* buf, unsigned int size, struct sockaddr_in* doctorWho){
-	struct ip* ip;
-	struct icmp* icmpPacket;
-	struct timespec tnow;
-	struct timespec* tbefore;
-	struct timespec diff;
-	unsigned int ipheaderlen;
-	unsigned int timems;
-	char* trunc;
-	
-	clock_gettime(CLOCK_REALTIME, &tnow);
-	ip=(struct ip*) buf;
-	ipheaderlen=ip->ip_hl<<2; // passage de bits en octets (*32/8)==> *4 ==> <<2 EZ
-	if(size < ipheaderlen + ICMP_MINLEN){
-		printf("Vodoo magic happened, the size of the packet must be %d a minima\n", ipheaderlen + ICMP_MINLEN);
-		return;
-	}
-	size-=ipheaderlen;
-	icmpPacket=(struct icmp*) (buf+ipheaderlen);
-	if(icmpPacket->icmp_type!=ICMP_ECHOREPLY){
-		fprintf(stderr, "%d bytes from %s : icmp_type=%d, icmp_code=%d\n", size, inet_ntoa(doctorWho->sin_addr), icmpPacket->icmp_type, icmpPacket->icmp_code);
-		return;
-	}
-	if(icmpPacket->icmp_id!=pid){ // pas notre paquet
-		return;
-	}
-	tbefore=(struct timespec*) &icmpPacket->icmp_data[0];
-	diff=time_diff(tbefore, &tnow);
-	timems=diff.tv_sec*1000+(diff.tv_nsec/1000000);
-	timeOverall+=timems;
-	if(timems>timeMax)
-		timeMax=timems;
-	if(timems<timeMin)
-		timeMin=timems;
-	if(size<sizeData)
-		trunc="(truncated)";
-	else
-		trunc="";
-	fprintf(stdout, "%u bytes from %s: icmp_seq=%d, time %dms %s\n", size, inet_ntoa(doctorWho->sin_addr), icmpPacket->icmp_seq, timems, trunc); 
-	nbrReceive++;
-}
 
 int main(int argc, char** argv){
+	LocalPort=htons(6789); // au pif
+	DistantPort=htons(80); // par defaut
 	struct sigaction siga;
 	struct timespec timetowait;
 	struct sockaddr_in from;
 	struct addrinfo wantedAddr;
-	struct addrinfo *to;
-	struct addrinfo *parseAddr;
-	
+	struct addrinfo *to=NULL;
+	struct addrinfo *parseAddr=NULL;
+	struct ifaddrs *myaddrs, *ifa;
+	unsigned int option=0;
+	int socklisten;
+
 	if(argc!=2){
 		printf("Utilisation : %s -option1 -option2 ... adresse/url\n", argv[0]);
 		exit(EXIT_FAILURE);
+	}
+	
+	memset(&wantedAddr, 0, sizeof(struct addrinfo));
+	
+	wantedAddr.ai_family=AF_INET;
+	wantedAddr.ai_socktype=SOCK_RAW;
+	//******** PARSER **********
+	option|=ICMP_OPTION;
+	hostname=argv[1];
+	//******** END PARSER ************
+	if(!(option & ICMP_OPTION & TCP_OPTION & UDP_OPTION)){ // si aucune indication utiliser ICMP
+		option|=ICMP_OPTION;
+	}
+	if(option & ICMP_OPTION){
+		pinger=pingerICMP;
+		lirePacket=lirePacketICMP;	
+		wantedAddr.ai_protocol=IPPROTO_ICMP;
+	}
+	if(option & TCP_OPTION){
+		pinger=pingerTCP;
+		lirePacket=lirePacketTCP;
+		wantedAddr.ai_protocol=IPPROTO_TCP;
+	}
+	if(option & UDP_OPTION){
+		pinger=pingerUDP;
+		lirePacket=lirePacketUDP;
+		wantedAddr.ai_protocol=IPPROTO_UDP;
+		DistantPort=htons(4); // unasigned
+	}
+	if((option & TIME_OPTION) && !(option & TCP_OPTION & UDP_OPTION)){ // pas changer pour tcp et udp !
+		timetowait.tv_sec=0; // a changer
+		timetowait.tv_nsec=0; // a changer
+	}
+	else{ // defaut 1 sec
+		timetowait.tv_sec=1; 
+		timetowait.tv_nsec=0;
+	}
+	if(option & SIZE_OPTION){ //uniquement en ICMP
+		sizeData=0; // a changer
+	}
+	else{
+		sizeData=64; //defaut
+	}
+	if(option & PORT_OPTION & UDP_OPTION){
+		DistantPort=htons(0); // a changer
+	}
+	
+    if(getifaddrs(&myaddrs) != 0){ //recuperation de notre adresse ip
+        perror("getifaddrs");
+        exit(1);
+    }
+    for (ifa = myaddrs; ifa != NULL; ifa = ifa->ifa_next){
+        if (ifa->ifa_addr == NULL)
+            continue;
+        if(ifa->ifa_addr->sa_family == AF_INET){
+				if(strcmp("lo", ifa->ifa_name)==0)
+					continue;
+                memcpy(&moi, ifa->ifa_addr, sizeof(struct sockaddr_in)); 
+                break; // on a trouvé une adresse usefull
+         }
+         else
+			continue;
+    }
+    freeifaddrs(myaddrs);
+    char buf[64];
+    memset(buf,0,64);
+    if (!inet_ntop(AF_INET, &moi.sin_addr, buf, sizeof(buf))){
+		printf("%s: inet_ntop failed!\n", ifa->ifa_name);
+	}
+	else{
+		printf("Adresse local : %s\n", buf);
 	}
 	
 	pid=getpid();
@@ -186,14 +134,11 @@ int main(int argc, char** argv){
 	sigfillset(&siga.sa_mask);
 	siga.sa_flags=0;
 	sigaction(SIGINT, &siga, NULL);
-	
-	hostname=argv[1];
-	
-	memset(&wantedAddr, 0, sizeof(struct addrinfo));
-	wantedAddr.ai_family=AF_INET;
-	wantedAddr.ai_socktype=SOCK_RAW;
-	wantedAddr.ai_protocol=IPPROTO_ICMP;
-	getaddrinfo(hostname, NULL, &wantedAddr, &to);
+		
+	if(getaddrinfo(hostname, NULL, &wantedAddr, &to)<0){
+		perror("getaddrinfo");
+		exit(EXIT_FAILURE);
+	}
 	
 	for(parseAddr=to; parseAddr!=NULL; parseAddr=parseAddr->ai_next){
 		sockfd=socket(parseAddr->ai_family, parseAddr->ai_socktype, parseAddr->ai_protocol);
@@ -207,24 +152,40 @@ int main(int argc, char** argv){
 		exit(EXIT_FAILURE);
 	}
 	freeaddrinfo(to);
-	// faire les actions stdin
-	//****************** A CHANGER AVEC LES OPTIONS TOUT CA ***********************
-	timetowait.tv_sec=1;
-	timetowait.tv_nsec=0;
-	pinger=pingerICMP;
-	sizeData=2048-8;
-	// ******************* JUSQU'ICI ***********************************************
-	pthread_create(&threadPinger, NULL, pingou, &timetowait);
+	if(option & UDP_OPTION){
+		wantedAddr.ai_protocol=IPPROTO_ICMP;
+		if(getaddrinfo(hostname, NULL, &wantedAddr, &to)<0){
+			perror("getaddrinfo");
+			exit(EXIT_FAILURE);
+		}
+		
+		for(parseAddr=to; parseAddr!=NULL; parseAddr=parseAddr->ai_next){
+			sockfd_udp_icmp=socket(parseAddr->ai_family, parseAddr->ai_socktype, parseAddr->ai_protocol);
+			if(sockfd!=-1){
+				break;
+			}
+		}
+		if(parseAddr==NULL){ // aucune addresse trouvée
+			printf("%s, unknown host %s\n", argv[0], hostname);
+			exit(EXIT_FAILURE);
+		}
+		socklisten=sockfd_udp_icmp;
+	}
+	else
+		socklisten=sockfd;
 	inet_ntop(destination.sin_family, &destination.sin_addr, nameDest, INET6_ADDRSTRLEN);
-	printf("Start pinging %s (%s) with %u data bytes send\n", hostname, nameDest, sizeData+8);
+	pthread_create(&threadPinger, NULL, pingou, &timetowait);
+	printf("Start pinging %s (%s) with %u data bytes send\n", hostname, nameDest, sizeData);
+	socklen_t doctorWhoLength=sizeof(from);
 	for(;;){
-		socklen_t doctorWhoLength=sizeof(from);
+		doctorWhoLength=sizeof(from);
 		int nbrecv;
-		if((nbrecv=recvfrom(sockfd, buffer, MAXPACKET, 0, (struct sockaddr*) &from, &doctorWhoLength))<=0){
+		if((nbrecv=recvfrom(socklisten, buffer, MAXPACKET, 0, (struct sockaddr*) &from, &doctorWhoLength))<=0){
 			perror("recvfrom :");
 			continue;
 		}
-		lirePacketICMP(buffer, (unsigned int) nbrecv, &from);
+		lirePacket(buffer, (unsigned int) nbrecv, &from);
 	}
 	return EXIT_SUCCESS;
 }
+
