@@ -9,6 +9,8 @@
 
 #include "const.h"
 #include <sys/types.h>
+#include <string.h>
+#include <ctype.h>
 
 void afficheEtoile(int i);
 
@@ -22,6 +24,23 @@ int appartient(u_int32_t ip, u_int32_t *tab);
  * \return le checksum du paquet ICMP
  */
 u_int16_t checksum(u_int16_t * icmp, int totalLength);
+
+/**
+ * \fn static inline int estEntier(char* c)
+ * \brief regarde si une chaine de caractère represente un entier ou non
+ * \param c la chaine de caracteres
+ * \return 1 si c n'est pas un entier, 0 sinon
+ */
+static inline int estEntier(char* c){
+unsigned int i;
+for (i=0;i<strlen(c);i++)
+	{
+		if (!isdigit(c[i])){
+			return 1;
+		}
+	}
+return 0;
+}
 
 
 /**

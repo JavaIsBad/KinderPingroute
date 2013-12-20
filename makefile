@@ -14,7 +14,7 @@ ping : ping.o pingICMP.o pingTCP.o pingUDP.o timeuh.o tools.o | bin
 	mv $@ bin/
 
 traceroute : traceroute.o tracerouteICMP.o timeuh.o tools.o | bin
-	gcc $(CFLAGS) -o traceroute $(OPATH)traceroute.o $(OPATH)tracerouteICMP.o $(OPATH)timeuh.o $(OPATH)tools.o
+	gcc $(CFLAGS) -o traceroute $(OPATH)traceroute.o $(OPATH)tracerouteICMP.o $(OPATH)timeuh.o $(OPATH)tools.o $(LIBFLAGS)
 	mv $@ bin/
 
 ping.o : ping.c ping.h const.h
