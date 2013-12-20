@@ -150,7 +150,6 @@ u_int16_t checksum_tcp_udp(char proto, u_int32_t ip_source_tampon, u_int32_t ip_
     pseudo_tcp.length=htons((unsigned short)(totalLength));
     memcpy(tampon, &pseudo_tcp, sizeof(pseudo_tcp));
     memcpy(tampon+sizeof(pseudo_tcp), buf, totalLength);
-    printf("size pseudo entete %lu\n",sizeof(struct pseudo_entete));
     check=checksum((unsigned short*)tampon, sizeof(struct pseudo_entete)+totalLength);
     return(check);
 }
