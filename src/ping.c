@@ -1,3 +1,10 @@
+/**
+ * \file ping.c (source code file)
+ * \author SCHIMCHOWITSCH PLANTE Raphaël François Guillaume, SCHMITT Maxime Joël
+ * \brief Code source pour la fonction ping
+ */
+
+
 #include "ping.h"
 #include "pingTCP.h"
 #include "pingICMP.h"
@@ -59,14 +66,10 @@ int main(int argc, char** argv){
 	int cptTIME, cptSIZE, cptPORT;
 	if (strcmp(argv[1],"--help")==0){
 		fprintf(stderr,"Ceci est l'aide :\n");
-		fprintf(stderr,"Les options existantes sont :\n-TCP ou -UDP ou -ICMP, pour choisir de quelle nature sont les paquets envoyés\nL'option ICMP est utilisée par defaut\n");
-		fprintf(stderr,"-TIME secondes,nanosecondes Permet de changer le temps d'envoie entre chaques paquets. Temps par défaut utilisé si utilisé avec -UDP ou -TCP");
-		fprintf(stderr,"-SIZE taille Permet de changer la taille des paquets envoyés. Utilisable uniquement en ICMP.");
+		fprintf(stderr,"Les options existantes sont :\n-TCP ou -UDP ou -ICMP, pour choisir de quelle nature sont les paquets envoyés\nL'option ICMP est utilisée par defaut.\n");
+		fprintf(stderr,"-TIME secondes,nanosecondes Permet de changer le temps d'envoie entre chaques paquets. Temps par défaut utilisé si utilisé avec -UDP ou -TCP.\n");
+		fprintf(stderr,"-SIZE taille Permet de changer la taille des paquets envoyés. Utilisable uniquement en ICMP.\n");
 		exit(EXIT_SUCCESS);
-	}
-	if(argc!=2){
-	//	printf("Utilisation : %s -option1 -option2 ... adresse/url\n", argv[0]);
-	//	exit(EXIT_FAILURE);
 	}
 	
 	memset(&wantedAddr, 0, sizeof(struct addrinfo));

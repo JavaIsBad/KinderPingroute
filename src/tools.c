@@ -1,3 +1,10 @@
+/**
+ * \file tools.c (source code file)
+ * \author SCHIMCHOWITSCH PLANTE Raphaël François Guillaume, SCHMITT Maxime Joël
+ * \brief Code source pour les outils servant aux autres fichiers
+ */
+
+
 #include "tools.h"
 #include "const.h"
 #include <signal.h>

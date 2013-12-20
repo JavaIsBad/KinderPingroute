@@ -1,3 +1,10 @@
+/**
+ * \file pingTCP.c (source code file)
+ * \author SCHIMCHOWITSCH PLANTE Raphaël François Guillaume, SCHMITT Maxime Joël
+ * \brief Code source pour la fonction pingTCP
+ */
+
+
 #include "tools.h"
 #include "const.h"
 #include "pingTCP.h"

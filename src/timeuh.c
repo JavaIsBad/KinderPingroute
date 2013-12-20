@@ -1,3 +1,9 @@
+/**
+ * \file timeuh.c (source code file)
+ * \author SCHIMCHOWITSCH PLANTE Raphaël François Guillaume, SCHMITT Maxime Joël
+ * \brief Code source pour la fonction de calcul du temps
+ */
+
 #include "timeuh.h"
 
 struct timespec time_diff(struct timespec* begin, struct timespec* end){

@@ -1,3 +1,10 @@
+/**
+ * \file pingUDP.c (source code file)
+ * \author SCHIMCHOWITSCH PLANTE Raphaël François Guillaume, SCHMITT Maxime Joël
+ * \brief Code source pour la fonction pingUDP
+ */
+
+
 #include "tools.h"
 #include "const.h"
 #include "pingUDP.h"
