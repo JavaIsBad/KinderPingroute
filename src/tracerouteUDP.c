@@ -19,8 +19,8 @@ struct timespec tbef;
 extern int ttl;
 
 
-u_int16_t LocalPort;
-u_int16_t DistantPort;
+extern u_int16_t LocalPort;
+extern u_int16_t DistantPort;
 static int first=1;
 
 void pingerUDP(void){
@@ -28,8 +28,6 @@ void pingerUDP(void){
 	struct udphdr *head=(struct udphdr*) packet;
 	int nbs;
 	if(first){
-		LocalPort=htons(56789);
-		DistantPort=htons(33465);
 		first=!first;
 	}
 	memset(head, 0, sizeof(struct udphdr));

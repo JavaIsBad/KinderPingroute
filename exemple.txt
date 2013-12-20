@@ -1,0 +1,7 @@
+./bin/ping -TCP -PORT 80 google.fr
+./bin/ping -UDP google.fr
+./bin/ping google.fr
+./bin/ping -TIME 0 10000000 google.fr
+./bin/traceroute -TCP -PORT 80 google.fr
+./bin/traceroute 8.8.8.8
+./bin/traceroute www.unistra.fr

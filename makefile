@@ -9,6 +9,9 @@ vpath %.o obj/
 vpath ping bin/
 vpath traceroute bin/
 
+all : ping traceroute
+	
+
 ping : ping.o pingICMP.o pingTCP.o pingUDP.o timeuh.o tools.o | bin
 	gcc $(CFLAGS) -o ping $(OPATH)ping.o $(OPATH)timeuh.o $(OPATH)pingICMP.o $(OPATH)tools.o $(OPATH)pingUDP.o $(OPATH)pingTCP.o $(LIBFLAGS)
 	mv $@ bin/

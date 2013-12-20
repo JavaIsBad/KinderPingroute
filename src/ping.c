@@ -90,7 +90,7 @@ void * pingou (void * timee){
 
 int main(int argc, char** argv){
 	LocalPort=htons(56789); // au pif
-	DistantPort=htons(80); // par defaut
+	DistantPort=htons(54658); // par defaut
 	struct sigaction siga;
 	struct timespec timetowait;
 	struct sockaddr_in from;
@@ -103,8 +103,8 @@ int main(int argc, char** argv){
 	int i;
 	int opt=0;
 	int cptTIME, cptSIZE, cptPORT;
-	if (argc == 1 || argc> 4){
-		fprintf(stderr,"Tapez %s --help pour afficher l'aide", 	argv[0]);
+	if (argc == 1 || argc> 9){
+		fprintf(stderr,"Tapez %s --help pour afficher l'aide\n", 	argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	if (strcmp(argv[1],"--help")==0){
@@ -112,6 +112,7 @@ int main(int argc, char** argv){
 		fprintf(stderr,"Les options existantes sont :\n-TCP ou -UDP ou -ICMP, pour choisir de quelle nature sont les paquets envoyés\nL'option ICMP est utilisée par defaut.\n");
 		fprintf(stderr,"-TIME secondes,nanosecondes Permet de changer le temps d'envoie entre chaques paquets. Temps par défaut utilisé si utilisé avec -UDP ou -TCP.\n");
 		fprintf(stderr,"-SIZE taille Permet de changer la taille des paquets envoyés. Utilisable uniquement en ICMP.\n");
+		fprintf(stderr,"-PORT port Permet de changer le port par lequel les paquets sont envoyés. Utilisable uniquement en TCP/UDP.\n");
 		exit(EXIT_SUCCESS);
 	}
 	
@@ -175,8 +176,8 @@ int main(int argc, char** argv){
 			 }
 		 }
 		 if (strcmp(argv[i],"-PORT")==0){
-			 if (option & ICMP_OPTION || option & TCP_OPTION)
-				fprintf(stderr,"L'option PORT n'est utilisable que pour la version UDP. Elle n'est donc pas prise en compte dans le cas présent.\n");
+			 if (option & ICMP_OPTION)
+				fprintf(stderr,"L'option PORT n'est utilisable que pour la version TCP/UDP. Elle n'est donc pas prise en compte dans le cas présent.\n");
 			else{
 				option|=PORT_OPTION;
 				cptPORT=i;
@@ -186,7 +187,7 @@ int main(int argc, char** argv){
 				
 			
 	//******** END PARSER ************
-	if(!(option & ICMP_OPTION & TCP_OPTION & UDP_OPTION)){ // si aucune indication utiliser ICMP
+	if(!(option & ICMP_OPTION || option & TCP_OPTION || option & UDP_OPTION)){ // si aucune indication utiliser ICMP
 		option|=ICMP_OPTION;
 	}
 	if(option & ICMP_OPTION){
@@ -229,7 +230,7 @@ int main(int argc, char** argv){
 	else{
 		sizeData=64; //defaut
 	}
-	if(option & PORT_OPTION & UDP_OPTION){
+	if(option & PORT_OPTION){
 		if (cptPORT+1==argc-1 || estEntier(argv[cptPORT+1])!=0){
 			fprintf(stderr,"Veuillez indiquer le port voulu apres l'option -PORT.\n");
 			exit(EXIT_FAILURE);
@@ -304,12 +305,16 @@ int main(int argc, char** argv){
 			exit(EXIT_FAILURE);
 		}
 		socklisten=sockfd_udp_icmp;
+		freeaddrinfo(to);
 	}
 	else
 		socklisten=sockfd;
 	inet_ntop(destination.sin_family, &destination.sin_addr, nameDest, INET6_ADDRSTRLEN);
 	pthread_create(&threadPinger, NULL, pingou, &timetowait);
-	printf("Start pinging %s (%s) with %u data bytes send\n", hostname, nameDest, sizeData);
+	if(option & TCP_OPTION|| option & UDP_OPTION)
+		printf("Start pinging %s (%s) with %u data bytes send on port %u\n", hostname, nameDest, sizeData, ntohs(DistantPort));
+	else
+		printf("Start pinging %s (%s) with %u data bytes send\n", hostname, nameDest, sizeData);
 	socklen_t doctorWhoLength=sizeof(from);
 	
 	for(;;){

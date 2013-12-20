@@ -21,6 +21,8 @@
 #include <time.h>
 #include <string.h>
 
+u_int16_t LocalPort;
+u_int16_t DistantPort;
 u_int32_t adresses[MAXJUMP];
 char* hostname;
 int sockfd;
@@ -46,16 +48,15 @@ int main(int argc, char** argv){
 	int socklisten;
 	int i; int opt=0;
 	int cptPORT;
-	int cptTIME;
-	if (argc == 1 || argc> 4){
-		fprintf(stderr,"Tapez %s --help pour afficher l'aide", 	argv[0]);
+	//~ int cptTIME;
+	if (argc == 1 || argc> 7){
+		fprintf(stderr,"Tapez %s --help pour afficher l'aide\n", 	argv[0]);
 		exit(EXIT_FAILURE);
 	}
 	if (strcmp(argv[1],"--help")==0){
 		fprintf(stderr,"Ceci est l'aide :\n");
 		fprintf(stderr,"Les options existantes sont :\n-TCP ou -UDP ou -ICMP, pour choisir de quelle nature sont les paquets envoyés\nL'option ICMP est utilisée par defaut.\n");
-		fprintf(stderr,"-TIME secondes,nanosecondes Permet de changer le temps d'envoie entre chaques paquets. Temps par défaut utilisé si utilisé avec -UDP ou -TCP.\n");
-		fprintf(stderr,"-PORT taille Permet de changer le port par lequel les paquets sont envoyés. Utilisable uniquement en TCP/UDP.\n");
+		fprintf(stderr,"-PORT port Permet de changer le port par lequel les paquets sont envoyés. Utilisable uniquement en TCP/UDP.\n");
 		exit(EXIT_SUCCESS);
 	}
 	
@@ -65,9 +66,8 @@ int main(int argc, char** argv){
 	wantedAddr.ai_family=AF_INET;
 	wantedAddr.ai_socktype=SOCK_RAW;
 	//******** PARSER **********
-	option|=ICMP_OPTION;
 	for (i=0;i<argc-1; i++){
-		if(strcmp(argv[i], "-TCP")==0){
+		if(strcmp(argv[i],"-TCP")==0){
 			if (opt!=0){
 				fprintf(stderr,"Veuillez ne choisir qu'une seule option entre TCP, UDP et ICMP.\n");
 				fflush(stderr);
@@ -101,17 +101,22 @@ int main(int argc, char** argv){
 			}
 		}
 	}
+	
+		if(!(option & ICMP_OPTION || option & TCP_OPTION || option & UDP_OPTION)){ // si aucune indication utiliser ICMP
+			option|=ICMP_OPTION;
+		}
+	
 	 for (i=0;i<argc-1;i++){
-		 if (strcmp(argv[i],"-TIME")==0){
-			 if(option & TCP_OPTION || option & UDP_OPTION)
-				 fprintf(stderr,"L'option TIME ne peut être utilisée pour les versions TCP et UDP\nLe temps par défaut est utilisé.\n");
-			 else{	
-				 option|=TIME_OPTION;
-				 cptTIME=i;
-			}
-		 }
+		 //~ if (strcmp(argv[i],"-TIME")==0){
+			 //~ if(option & TCP_OPTION || option & UDP_OPTION)
+				 //~ fprintf(stderr,"L'option TIME ne peut être utilisée pour les versions TCP et UDP\nLe temps par défaut est utilisé.\n");
+			 //~ else{	
+				 //~ option|=TIME_OPTION;
+				 //~ cptTIME=i;
+			//~ }
+		 //~ }
 		 if (strcmp(argv[i],"-PORT")==0){
-			 if (option & ICMP_OPTION)
+			 if(option&ICMP_OPTION)
 				fprintf(stderr,"L'option PORT n'est utilisable que pour la version UDP et TCP. Elle n'est donc pas prise en compte dans le cas présent.\n");
 			else{
 				option|=PORT_OPTION;
@@ -122,43 +127,48 @@ int main(int argc, char** argv){
 	
 	hostname=argv[argc-1];
 	//******** END PARSER ************
-	if(!(option & ICMP_OPTION & TCP_OPTION & UDP_OPTION)){ // si aucune indication utiliser ICMP
-		option|=ICMP_OPTION;
-	}
 	if(option & ICMP_OPTION){
+		printf("Utilisation de ICMP\n");
 		pinger=pingerICMP;
 		lirePacket=tracertICMP;	
 		wantedAddr.ai_protocol=IPPROTO_ICMP;
 	}
 	if(option & TCP_OPTION){
+		printf("Utilisation de TCP\n");
+		LocalPort=htons(50789);
+		DistantPort=htons(80);
 		pinger=pingerTCP;
 		lirePacket=tracertTCP;
 		wantedAddr.ai_protocol=IPPROTO_TCP;
 	}
 	if(option & UDP_OPTION){
+		printf("Utilisation de UDP\n");
+		LocalPort=htons(56789);
+		DistantPort=htons(33465);
 		pinger=pingerUDP;
 		lirePacket=tracertUDP;
 		wantedAddr.ai_protocol=IPPROTO_UDP;
 	}
-	if(option & TIME_OPTION){ // pas changer pour tcp et udp !
-		if (cptTIME+1==argc-1 || cptTIME+2==argc-1 || estEntier(argv[cptTIME+1])!=0 || estEntier(argv[cptTIME+2])!=0){
-			fprintf(stderr,"Veuillez indiquer les secondes puis les nanosecondes apres l'option -TIME.\n");
-			exit(EXIT_FAILURE);
-		}
-		else{
-			timetowait.tv_sec=atoi(argv[cptTIME+1]);
-			timetowait.tv_nsec=atoi(argv[cptTIME+2]);
-		}
-	}
-	else{
+	//~ if(option & TIME_OPTION){
+		//~ if (cptTIME+1==argc-1 || cptTIME+2==argc-1 || estEntier(argv[cptTIME+1])!=0 || estEntier(argv[cptTIME+2])!=0){
+			//~ fprintf(stderr,"Veuillez indiquer les secondes puis les nanosecondes apres l'option -TIME.\n");
+			//~ exit(EXIT_FAILURE);
+		//~ }
+		//~ else{
+			//~ timetowait.tv_sec=atoi(argv[cptTIME+1]);
+			//~ timetowait.tv_nsec=atoi(argv[cptTIME+2]);
+		//~ }
+	//~ }
+	//~ else{
 		timetowait.tv_sec=0; 
 		timetowait.tv_nsec=500000000; // pour tester 2 fois par seconde et après 10 essays on passe au suivant -> 5sec
-	}
-	if(option & PORT_OPTION & UDP_OPTION){
+	//~ }
+	if(option & PORT_OPTION && !(option&ICMP_OPTION)){
 		if (cptPORT+1==argc-1 || estEntier(argv[cptPORT+1])!=0){
 			fprintf(stderr,"Veuillez indiquer le port voulu apres l'option -PORT.\n");
 			exit(EXIT_FAILURE);
 		}
+		DistantPort=htons(atoi(argv[cptPORT+1]));
 	}
 	
     if(getifaddrs(&myaddrs) != 0){ //recuperation de notre adresse ip
@@ -222,11 +232,15 @@ int main(int argc, char** argv){
 			exit(EXIT_FAILURE);
 		}
 		socklisten=sockfd_udp_icmp;
+		freeaddrinfo(to);
 	}
 	else
 		socklisten=sockfd;
 	inet_ntop(destination.sin_family, &destination.sin_addr, nameDest, INET6_ADDRSTRLEN);
-	printf("Start tracerouting %s (%s)\n", hostname, nameDest);
+	if(option & ICMP_OPTION)
+		printf("Start tracerouting %s (%s)\n", hostname, nameDest);
+	else
+		printf("Start tracerouting %s (%s) on port %u\n", hostname, nameDest, ntohs(DistantPort));
 	socklen_t doctorWhoLength=sizeof(from);
 	setsockopt(sockfd, IPPROTO_IP, IP_TTL, (char*)&ttl, sizeof(ttl));
 	int maxSocket=sockfd>socklisten ? sockfd+1 : socklisten+1;

@@ -18,15 +18,13 @@ struct timespec tbef;
 extern int ttl;
 
 
-u_int16_t LocalPort;
-u_int16_t DistantPort;
+extern u_int16_t LocalPort;
+extern u_int16_t DistantPort;
 
 void pingerTCP(void){
 	unsigned char packet[MAXPACKET];
 	struct tcphdr *head=(struct tcphdr*) packet;
 	int nbs;
-	LocalPort=htons(50789);
-	DistantPort=htons(80);
 	memset(head, 0, sizeof(struct tcphdr));
 	head->source=LocalPort;
 	head->dest=DistantPort;
