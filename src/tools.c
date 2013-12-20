@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 //~ int connecticut(int af, int type/*Sock_raw/dgram/stream */, const char* src, connect_info* ci, int port){
 	//~ int protocol;
@@ -67,6 +68,8 @@ struct pseudo_entete
 
 extern char* hostname;
 extern int pid;
+extern int sockfd;
+extern int sockfd_udp_icmp;
 extern long unsigned int timeMin;
 extern long unsigned int timeMax;
 extern long unsigned int timeOverall;
@@ -117,6 +120,8 @@ u_int16_t checksum(u_int16_t* icmp, int totalLength){
 void sigIntAction(int signum){
 	pthread_cancel(threadPinger);
 	pthread_join(threadPinger, NULL);
+	close(sockfd);
+	close(sockfd_udp_icmp);
 	fflush(stdout);
 	printf("Signal %d received\n", signum);
 	printf("************** STATISTICS FOR %s (%s) PINGING **************\n", hostname, nameDest);

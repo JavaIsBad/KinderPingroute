@@ -1,6 +1,7 @@
 #include "ping.h"
 #include "pingTCP.h"
 #include "pingICMP.h"
+#include "pingUDP.h"
 #include "tools.h"
 #include "const.h"
 #include <stdio.h>
@@ -22,6 +23,7 @@ u_int16_t DistantPort;
 char* hostname;
 int pid;
 int sockfd;
+int sockfd_udp_icmp;
 long unsigned int timeMin=ULONG_MAX;
 long unsigned int timeMax=0;
 long unsigned int timeOverall=0;
@@ -49,6 +51,7 @@ int main(int argc, char** argv){
 	struct addrinfo *parseAddr=NULL;
 	struct ifaddrs *myaddrs, *ifa;
 	unsigned int option=0;
+	int socklisten;
 
 	if(argc!=2){
 		printf("Utilisation : %s -option1 -option2 ... adresse/url\n", argv[0]);
@@ -60,7 +63,7 @@ int main(int argc, char** argv){
 	wantedAddr.ai_family=AF_INET;
 	wantedAddr.ai_socktype=SOCK_RAW;
 	//******** PARSER **********
-	option|=ICMP_OPTION;
+	option|=UDP_OPTION;
 	hostname=argv[1];
 	//******** END PARSER ************
 	if(!(option & ICMP_OPTION & TCP_OPTION & UDP_OPTION)){ // si aucune indication utiliser ICMP
@@ -75,6 +78,12 @@ int main(int argc, char** argv){
 		pinger=pingerTCP;
 		lirePacket=lirePacketTCP;
 		wantedAddr.ai_protocol=IPPROTO_TCP;
+	}
+	if(option & UDP_OPTION){
+		pinger=pingerUDP;
+		lirePacket=lirePacketUDP;
+		wantedAddr.ai_protocol=IPPROTO_UDP;
+		DistantPort=htons(4); // unasigned
 	}
 	if((option & TIME_OPTION) && !(option & TCP_OPTION & UDP_OPTION)){ // pas changer pour tcp et udp !
 		timetowait.tv_sec=0; // a changer
@@ -143,7 +152,27 @@ int main(int argc, char** argv){
 		exit(EXIT_FAILURE);
 	}
 	freeaddrinfo(to);
-
+	if(option & UDP_OPTION){
+		wantedAddr.ai_protocol=IPPROTO_ICMP;
+		if(getaddrinfo(hostname, NULL, &wantedAddr, &to)<0){
+			perror("getaddrinfo");
+			exit(EXIT_FAILURE);
+		}
+		
+		for(parseAddr=to; parseAddr!=NULL; parseAddr=parseAddr->ai_next){
+			sockfd_udp_icmp=socket(parseAddr->ai_family, parseAddr->ai_socktype, parseAddr->ai_protocol);
+			if(sockfd!=-1){
+				break;
+			}
+		}
+		if(parseAddr==NULL){ // aucune addresse trouvée
+			printf("%s, unknown host %s\n", argv[0], hostname);
+			exit(EXIT_FAILURE);
+		}
+		socklisten=sockfd_udp_icmp;
+	}
+	else
+		socklisten=sockfd;
 	inet_ntop(destination.sin_family, &destination.sin_addr, nameDest, INET6_ADDRSTRLEN);
 	pthread_create(&threadPinger, NULL, pingou, &timetowait);
 	printf("Start pinging %s (%s) with %u data bytes send\n", hostname, nameDest, sizeData);
@@ -151,7 +180,7 @@ int main(int argc, char** argv){
 	for(;;){
 		doctorWhoLength=sizeof(from);
 		int nbrecv;
-		if((nbrecv=recvfrom(sockfd, buffer, MAXPACKET, 0, (struct sockaddr*) &from, &doctorWhoLength))<=0){
+		if((nbrecv=recvfrom(socklisten, buffer, MAXPACKET, 0, (struct sockaddr*) &from, &doctorWhoLength))<=0){
 			perror("recvfrom :");
 			continue;
 		}

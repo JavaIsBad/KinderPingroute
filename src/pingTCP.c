@@ -41,7 +41,7 @@ void pingerTCP(void){
 	head->dest=DistantPort;
 	head->seq=htonl(nbrSend);
 	head->ack_seq=0;
-	head->doff=5; // 5*32bits (5 bytes)
+	head->doff=5; // 5*32bits (5 bytes) sur 1 octet pas besoin de htonl
 	head->syn= 1;
 	head->window= TCP_MAXWIN;
 	
