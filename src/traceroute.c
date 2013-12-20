@@ -1,5 +1,6 @@
 #include "traceroute.h"
 #include "tracerouteICMP.h"
+#include "tracerouteUDP.h"
 #include "tools.h"
 #include "timeuh.h"
 #include "const.h"
@@ -30,7 +31,6 @@ char nameDest[INET6_ADDRSTRLEN];
 void (*pinger)(void);
 void (*lirePacket)(unsigned char*, unsigned int, struct sockaddr_in*);
 unsigned int sizeData=64;
-struct timespec tbef;
 int ttl=1;
 
 
@@ -57,7 +57,7 @@ int main(int argc, char** argv){
 	wantedAddr.ai_family=AF_INET;
 	wantedAddr.ai_socktype=SOCK_RAW;
 	//******** PARSER **********
-	option|=ICMP_OPTION;
+	option|=UDP_OPTION;
 	hostname=argv[1];
 	//******** END PARSER ************
 	if(!(option & ICMP_OPTION & TCP_OPTION & UDP_OPTION)){ // si aucune indication utiliser ICMP
@@ -74,8 +74,8 @@ int main(int argc, char** argv){
 		wantedAddr.ai_protocol=IPPROTO_TCP;
 	}
 	if(option & UDP_OPTION){
-		pinger=pingerICMP;
-		lirePacket=tracertICMP;
+		pinger=pingerUDP;
+		lirePacket=tracertUDP;
 		wantedAddr.ai_protocol=IPPROTO_UDP;
 		DistantPort=htons(4); // unasigned
 	}
@@ -161,7 +161,6 @@ int main(int argc, char** argv){
 		FD_SET(socklisten, &ecoute);
 		doctorWhoLength=sizeof(from);
 		int nbrecv;
-		clock_gettime(CLOCK_REALTIME, &tbef);
 		pinger();
 		int pres=pselect(maxSocket, &ecoute, NULL, NULL, &timetowait, NULL);
 		if(pres<0){
