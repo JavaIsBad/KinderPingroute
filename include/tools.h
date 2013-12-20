@@ -2,6 +2,7 @@
 #define __TOOLS_H
 
 #include "const.h"
+#include <sys/types.h>
 
 //~ typedef struct {
 	//~ int sockfd;
@@ -19,10 +20,10 @@
 
 void sigIntAction(int signum);
 
-unsigned short checksum(unsigned short* icmp, int totalLength);
+u_int16_t checksum(u_int16_t * icmp, int totalLength);
 
 void * pingou (void * time);
 
-unsigned short checksum_tcp(unsigned long ip_source_tampon, unsigned long ip_destination_tampon, unsigned char buf[MAXPACKET], int totalLength);
+u_int16_t checksum_tcp_udp(char proto, u_int32_t ip_source_tampon, u_int32_t ip_destination_tampon, unsigned char buf[MAXPACKET], int totalLength);
 
 #endif  // __TOOLS_H

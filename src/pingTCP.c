@@ -29,10 +29,8 @@ extern char nameDest[INET6_ADDRSTRLEN];
 
 static struct timespec tbefore;
 
-
-
 void pingerTCP(void){
-	printf("%s to %s\n", inet_ntoa(moi.sin_addr), inet_ntoa(destination.sin_addr));
+	inet_ntoa(moi.sin_addr);
 	unsigned char packet[MAXPACKET];
 	struct tcphdr *head=(struct tcphdr*) packet;
 	unsigned int i;
@@ -49,8 +47,8 @@ void pingerTCP(void){
 	
 	for(i=0; i<sizeData; i++)
 		*data++=i;
-	head->check=checksum_tcp(moi.sin_addr.s_addr, destination.sin_addr.s_addr, packet, 20);
-	nbs=sendto(sockfd, packet, 20, 0, (struct sockaddr*) &destination, sizeof(struct sockaddr));
+	head->check=checksum_tcp_udp(IPPROTO_TCP ,moi.sin_addr.s_addr, destination.sin_addr.s_addr, packet, sizeof(struct tcphdr));
+	nbs=sendto(sockfd, packet, sizeof(struct tcphdr), 0, (struct sockaddr*) &destination, sizeof(struct sockaddr));
 	if(nbs<0 || (unsigned int) nbs< 20+sizeData){
 		if(nbs<0)
 			perror("sendto :");

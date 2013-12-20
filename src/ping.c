@@ -109,7 +109,7 @@ int main(int argc, char** argv){
 	timetowait.tv_sec=1;
 	timetowait.tv_nsec=0;
 	pinger=pingerTCP;
-	sizeData=0;
+	sizeData=64;
 	// ******************* JUSQU'ICI ***********************************************
 	inet_ntop(destination.sin_family, &destination.sin_addr, nameDest, INET6_ADDRSTRLEN);
 	pthread_create(&threadPinger, NULL, pingou, &timetowait);
