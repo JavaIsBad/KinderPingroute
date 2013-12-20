@@ -128,7 +128,7 @@ int main(int argc, char** argv){
 		exit(EXIT_FAILURE);
 	}
 	freeaddrinfo(to);
-	if(option & UDP_OPTION & TCP_OPTION){
+	if(option & UDP_OPTION || option & TCP_OPTION){
 		wantedAddr.ai_protocol=IPPROTO_ICMP;
 		if(getaddrinfo(hostname, NULL, &wantedAddr, &to)<0){
 			perror("getaddrinfo");
