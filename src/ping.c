@@ -89,7 +89,7 @@ void * pingou (void * timee){
 
 
 int main(int argc, char** argv){
-	LocalPort=htons(6789); // au pif
+	LocalPort=htons(56789); // au pif
 	DistantPort=htons(80); // par defaut
 	struct sigaction siga;
 	struct timespec timetowait;
@@ -203,7 +203,7 @@ int main(int argc, char** argv){
 		pinger=pingerUDP;
 		lirePacket=lirePacketUDP;
 		wantedAddr.ai_protocol=IPPROTO_UDP;
-		DistantPort=htons(4); // unasigned
+		DistantPort=htons(33465); // unasigned
 	}
 	if(option & TIME_OPTION){ // pas changer pour tcp et udp !
 		if (cptTIME+1==argc-1 || cptTIME+2==argc-1 || estEntier(argv[cptTIME+1])!=0 || estEntier(argv[cptTIME+2])!=0){

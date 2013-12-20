@@ -12,8 +12,7 @@
 
 extern int sockfd;
 extern struct sockaddr_in destination;
-extern long unsigned int nbrReceive;
-extern struct timespec tbef;
+struct timespec tbef;
 extern int ttl;
 extern unsigned int sizeData;
 
