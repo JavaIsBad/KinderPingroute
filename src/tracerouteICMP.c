@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <netdb.h>
 
 extern int sockfd;
 extern struct sockaddr_in destination;
@@ -22,6 +23,7 @@ void tracertICMP(unsigned char*buf, unsigned int size, struct sockaddr_in* docto
 	struct timespec diff;
 	unsigned int ipheaderlen;
 	unsigned int timems;
+	char host[50];	
 	clock_gettime(CLOCK_REALTIME, &tnow);
 	ip=(struct ip*) buf;
 	ipheaderlen=ip->ip_hl<<2; // passage de bits en octets (*32/8)==> *4 ==> <<2 EZ
@@ -31,7 +33,10 @@ void tracertICMP(unsigned char*buf, unsigned int size, struct sockaddr_in* docto
 	}
 	diff=time_diff(&tbef, &tnow);
 	timems=diff.tv_sec*1000+(diff.tv_nsec/1000000);
-	fprintf(stdout, "%d %s (%s) time %dms\n", ttl, inet_ntoa(doctorWho->sin_addr), inet_ntoa(doctorWho->sin_addr), timems); 
+	if(getnameinfo((struct sockaddr*) doctorWho, sizeof(struct sockaddr_in), host, 50, NULL, 0, 0)<0){ //try to get server name if possible !
+		perror("genameinfo");
+	}
+	fprintf(stdout, "%d %s (%s) time %dms\n", ttl, host, inet_ntoa(doctorWho->sin_addr), timems); 
 }
 
 void pingerICMP(void){
