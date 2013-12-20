@@ -103,7 +103,7 @@ int main(int argc, char** argv){
 	int i;
 	int opt=0;
 	int cptTIME, cptSIZE, cptPORT;
-	if (argc == 1){
+	if (argc == 1 || argc> 4){
 		fprintf(stderr,"Tapez %s --help pour afficher l'aide", 	argv[0]);
 		exit(EXIT_FAILURE);
 	}

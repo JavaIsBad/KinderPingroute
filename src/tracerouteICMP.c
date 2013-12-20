@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <netdb.h>
+#include <time.h>
 
 extern int sockfd;
 extern struct sockaddr_in destination;
