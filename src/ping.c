@@ -1,3 +1,10 @@
+/**
+ * \file ping.c (source code file)
+ * \author SCHIMCHOWITSCH PLANTE Raphaël François Guillaume, SCHMITT Maxime Joël
+ * \brief Code source pour la fonction ping
+ */
+
+
 #include "ping.h"
 #include "pingTCP.h"
 #include "pingICMP.h"
@@ -16,6 +23,8 @@
 #include <netdb.h>
 #include <unistd.h>
 #include <ifaddrs.h>
+#include <string.h>
+#include <ctype.h>
 
 u_int16_t LocalPort;
 u_int16_t DistantPort;
@@ -91,10 +100,15 @@ int main(int argc, char** argv){
 	struct ifaddrs *myaddrs, *ifa;
 	unsigned int option=0;
 	int socklisten;
-
-	if(argc!=2){
-		printf("Utilisation : %s -option1 -option2 ... adresse/url\n", argv[0]);
-		exit(EXIT_FAILURE);
+	int i;
+	int opt=0;
+	int cptTIME, cptSIZE, cptPORT;
+	if (strcmp(argv[1],"--help")==0){
+		fprintf(stderr,"Ceci est l'aide :\n");
+		fprintf(stderr,"Les options existantes sont :\n-TCP ou -UDP ou -ICMP, pour choisir de quelle nature sont les paquets envoyés\nL'option ICMP est utilisée par defaut.\n");
+		fprintf(stderr,"-TIME secondes,nanosecondes Permet de changer le temps d'envoie entre chaques paquets. Temps par défaut utilisé si utilisé avec -UDP ou -TCP.\n");
+		fprintf(stderr,"-SIZE taille Permet de changer la taille des paquets envoyés. Utilisable uniquement en ICMP.\n");
+		exit(EXIT_SUCCESS);
 	}
 	
 	memset(&wantedAddr, 0, sizeof(struct addrinfo));
@@ -102,8 +116,71 @@ int main(int argc, char** argv){
 	wantedAddr.ai_family=AF_INET;
 	wantedAddr.ai_socktype=SOCK_RAW;
 	//******** PARSER **********
-	option|=ICMP_OPTION;
-	hostname=argv[1];
+	//option|=ICMP_OPTION;
+	hostname=argv[argc-1];
+	for (i=0;i<argc-1; i++){
+		if(strcmp(argv[i], "-TCP")==0){
+			if (opt!=0){
+				fprintf(stderr,"Veuillez ne choisir qu'une seule option entre TCP, UDP et ICMP.\n");
+				fflush(stderr);
+				exit(EXIT_FAILURE);
+			}
+			else{
+				opt=1;
+				option|=TCP_OPTION;
+			}
+		}
+		else if(strcmp(argv[i], "-ICMP")==0){
+			if (opt!=0){
+				fprintf(stderr,"Veuillez ne choisir qu'une seule option entre TCP, UDP et ICMP.\n");
+				fflush(stderr);
+				exit(EXIT_FAILURE);
+			}
+			else{
+				opt=1;
+				option|=ICMP_OPTION;
+			}
+		}
+		else if(strcmp(argv[i], "-UDP")==0){
+			if (opt!=0){
+				fprintf(stderr,"Veuillez ne choisir qu'une seule option entre TCP, UDP et ICMP.\n");
+				fflush(stderr);
+				exit(EXIT_FAILURE);
+			}
+			else{
+				opt=1;
+				option|=UDP_OPTION;
+			}
+		}
+	}
+	 for (i=0;i<argc-1;i++){
+		  if (strcmp(argv[i],"-TIME")==0){
+			 if(option & TCP_OPTION || option & UDP_OPTION)
+				 fprintf(stderr,"L'option TIME ne peut être utilisée pour les versions TCP et UDP\nLe temps par défaut est utilisé.\n");
+			 else{	
+				 option|=TIME_OPTION;
+				 cptTIME=i;
+			}
+		 }
+		 if (strcmp(argv[i],"-SIZE")==0){
+			 if (option & TCP_OPTION || option & UDP_OPTION)
+				fprintf(stderr,"L'option SIZE n'est utilisable qu'en version ICMP. Elle n'est donc pas prise en compte dans le cas présent.\n");
+			 else{
+				 option|=SIZE_OPTION;
+				 cptSIZE=i;
+			 }
+		 }
+		 if (strcmp(argv[i],"-PORT")==0){
+			 if (option & ICMP_OPTION || option & TCP_OPTION)
+				fprintf(stderr,"L'option PORT n'est utilisable que pour la version UDP. Elle n'est donc pas prise en compte dans le cas présent.\n");
+			else{
+				option|=PORT_OPTION;
+				cptPORT=i;
+			}
+		}
+	 }
+				
+			
 	//******** END PARSER ************
 	if(!(option & ICMP_OPTION & TCP_OPTION & UDP_OPTION)){ // si aucune indication utiliser ICMP
 		option|=ICMP_OPTION;
@@ -124,22 +201,36 @@ int main(int argc, char** argv){
 		wantedAddr.ai_protocol=IPPROTO_UDP;
 		DistantPort=htons(4); // unasigned
 	}
-	if((option & TIME_OPTION) && !(option & TCP_OPTION & UDP_OPTION)){ // pas changer pour tcp et udp !
-		timetowait.tv_sec=0; // a changer
-		timetowait.tv_nsec=0; // a changer
+	if(option & TIME_OPTION){ // pas changer pour tcp et udp !
+		if (cptTIME+1==argc-1 || cptTIME+2==argc-1 || estEntier(argv[cptTIME+1])!=0 || estEntier(argv[cptTIME+2])!=0){
+			fprintf(stderr,"Veuillez indiquer les secondes puis les nanosecondes apres l'option -TIME.\n");
+			exit(EXIT_FAILURE);
+		}
+		else{
+			timetowait.tv_sec=atoi(argv[cptTIME+1]);
+			timetowait.tv_nsec=atoi(argv[cptTIME+2]);
+		}
 	}
-	else{ // defaut 1 sec
+	else{ // defaut 1,5 sec
 		timetowait.tv_sec=1; 
-		timetowait.tv_nsec=0;
+		timetowait.tv_nsec=500000000;
 	}
 	if(option & SIZE_OPTION){ //uniquement en ICMP
-		sizeData=0; // a changer
+		if (cptSIZE+1==argc-1 || estEntier(argv[cptSIZE+1])!=0){
+			fprintf(stderr,"Veuillez indiquer la taille des paquets apres l'option -SIZE.\n");
+			exit(EXIT_FAILURE);
+		}
+		sizeData=atoi(argv[cptSIZE+1]);
 	}
 	else{
 		sizeData=64; //defaut
 	}
 	if(option & PORT_OPTION & UDP_OPTION){
-		DistantPort=htons(0); // a changer
+		if (cptPORT+1==argc-1 || estEntier(argv[cptPORT+1])!=0){
+			fprintf(stderr,"Veuillez indiquer le port voulu apres l'option -PORT.\n");
+			exit(EXIT_FAILURE);
+		}
+		DistantPort=htons(atoi(argv[cptPORT+1]));
 	}
 	
     if(getifaddrs(&myaddrs) != 0){ //recuperation de notre adresse ip

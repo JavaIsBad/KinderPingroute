@@ -1,3 +1,10 @@
+/**
+ * \file tools.c (source code file)
+ * \author SCHIMCHOWITSCH PLANTE Raphaël François Guillaume, SCHMITT Maxime Joël
+ * \brief Code source pour les outils servant aux autres fichiers
+ */
+
+
 #include "tools.h"
 #include "const.h"
 #include <signal.h>
@@ -18,21 +25,22 @@ struct pseudo_entete
  };
 
 
+
 u_int16_t checksum(u_int16_t* icmp, int totalLength){
-	 u_int32_t checksum=0;
+	 u_int32_t checksumm=0;
     // Complément à 1 de la somme des complément à 1 sur 16 bits
     while(totalLength>1){
-		checksum=checksum+*icmp++;
+		checksumm=checksumm+*icmp++;
         totalLength=totalLength-sizeof(u_int16_t);
     }
 
     if(totalLength>0)
-        checksum=checksum+*(unsigned char*)icmp;
+        checksumm=checksumm+*(unsigned char*)icmp;
 
-    checksum=(checksum>>16)+(checksum&0xffff);
-    checksum=checksum+(checksum>>16);
+    checksumm=(checksumm>>16)+(checksumm&0xffff);
+    checksumm=checksumm+(checksumm>>16);
 
-    return (u_int16_t)(~checksum); // complement a 1
+    return (u_int16_t)(~checksumm); // complement a 1
 }
 
 
