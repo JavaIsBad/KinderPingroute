@@ -69,11 +69,11 @@ void sigIntAction(int signum){
 	exit(EXIT_SUCCESS);
 }
 
-void * pingou (void * time){
+void * pingou (void * timee){
 	sigset_t mask;
 	sigfillset(&mask);
 	pthread_sigmask(SIG_BLOCK, &mask, NULL);
-	struct timespec* timer=(struct timespec*) time;
+	struct timespec* timer=(struct timespec*) timee;
 	for(;;){
 		if(limitePing!=0 && nbrSend>=limitePing){
 			kill(pid, SIGINT);
@@ -103,6 +103,10 @@ int main(int argc, char** argv){
 	int i;
 	int opt=0;
 	int cptTIME, cptSIZE, cptPORT;
+	if (argc == 1){
+		fprintf(stderr,"Tapez %s --help pour afficher l'aide", 	argv[0]);
+		exit(EXIT_FAILURE);
+	}
 	if (strcmp(argv[1],"--help")==0){
 		fprintf(stderr,"Ceci est l'aide :\n");
 		fprintf(stderr,"Les options existantes sont :\n-TCP ou -UDP ou -ICMP, pour choisir de quelle nature sont les paquets envoyés\nL'option ICMP est utilisée par defaut.\n");
